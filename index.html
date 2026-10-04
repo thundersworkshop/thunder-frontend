@@ -507,7 +507,6 @@
                 <button class="secondary-btn" onclick="nextPage()">Next ➡️</button>
             </div>
 
-            <!-- MY PROFILE SECTION -->
 <!-- MY PROFILE SECTION -->
 <div id="profile-section" class="tab-content">
     <div class="flex-row" style="flex-wrap: wrap; gap: 20px; align-items: flex-start;">
@@ -516,17 +515,20 @@
         <div class="data-card" style="flex: 1 1 100%; min-width: 0; border-radius: 16px;">
             <h2 style="color: #10b981; margin-bottom: 20px;">My Profile</h2>
             <div style="display: flex; flex-direction: column; gap: 15px; font-size: 14px;">
-                <div style="display: flex; justify-content: space-between; flex-wrap: wrap; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+                <div style="display: flex; justify-content: space-between; flex-wrap: wrap; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; gap: 10px;">
                     <strong style="color: var(--text-main);">Username:</strong> <span id="profile-username" style="color: #10b981; font-weight: 600;">...</span>
                 </div>
-                <div style="display: flex; justify-content: space-between; flex-wrap: wrap; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+                <div style="display: flex; justify-content: space-between; flex-wrap: wrap; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; gap: 10px;">
                     <strong style="color: var(--text-main);">Full Name:</strong> <span id="profile-fullname" style="color: var(--text-sub);">...</span>
                 </div>
-                <div style="display: flex; justify-content: space-between; flex-wrap: wrap; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+                <div style="display: flex; justify-content: space-between; flex-wrap: wrap; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; gap: 10px;">
                     <strong style="color: var(--text-main);">Phone Number:</strong> <span id="profile-phone" style="color: var(--text-sub);">...</span>
                 </div>
-                <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 5px;">
-                    <strong style="color: var(--text-main);">Email Address:</strong> <span id="profile-email" style="color: #f43f5e; font-weight: 600; word-break: break-all; text-align: right;">...</span>
+                
+                <!-- RESPONSIVE EMAIL CONTAINER -->
+                <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                    <strong style="color: var(--text-main);">Email Address:</strong> 
+                    <span id="profile-email" style="color: #f43f5e; font-weight: 600; word-break: break-all; text-align: right;">...</span>
                 </div>
                 
                 <!-- SERVER STATUS INDICATOR -->
@@ -710,6 +712,9 @@
                         style="width: 100%; padding: 14px; margin-top: 10px;">🚪 Log Out of Settings</button>
                 </div>
             </div>
+        <!-- MOBILE BOTTOM SPACER -->
+            <div style="height: 100px; width: 100%; display: block;"></div>
+            
         </main>
     </div>
 
