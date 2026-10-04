@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-import { getAuth, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
+import { getAuth, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential, sendEmailVerification } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBP8B2KiK_EWxhLrRgeC6uxy1ItYQNbGC4",
@@ -1113,3 +1113,53 @@ window.restoreTransaction = async function(transactionId, originalAmount, logId)
         console.error('Restore failed:', err);
     }
 };
+// ==========================================
+// NEW PROFILE & SECURITY LOGIC
+// ==========================================
+
+// 1. Update Profile Details (Name & Phone)
+document.getElementById('update-profile-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = e.target.querySelector('button');
+    btn.innerText = "Saving...";
+    
+    const newName = document.getElementById('update-fullname').value;
+    const newPhone = document.getElementById('update-phone').value;
+    const username = auth.currentUser.displayName.split(' | ')[0]; // Keeps your original username
+    
+    try {
+        await updateProfile(auth.currentUser, { displayName: `${username} | ${newName} | ${newPhone}` });
+        alert("Profile details updated successfully!");
+        location.reload();
+    } catch (error) {
+        alert("Failed to update profile: " + error.message);
+        btn.innerText = "Save Details";
+    }
+});
+
+// 2. Change Password
+document.getElementById('change-password-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const oldPass = document.getElementById('old-password').value;
+    const newPass = document.getElementById('new-password').value;
+    const confirmPass = document.getElementById('confirm-new-password').value;
+    const btn = e.target.querySelector('button');
+
+    if (newPass !== confirmPass) return alert("New passwords do not match!");
+    
+    btn.innerText = "Verifying...";
+    try {
+        // Re-authenticate user to prove identity before changing password
+        const credential = EmailAuthProvider.credential(auth.currentUser.email, oldPass);
+        await reauthenticateWithCredential(auth.currentUser, credential);
+        
+        // Update password
+        await updatePassword(auth.currentUser, newPass);
+        alert("Password updated securely!");
+        e.target.reset();
+    } catch (error) {
+        alert("Error: " + error.message);
+    } finally {
+        btn.innerText = "Update Password";
+    }
+});
