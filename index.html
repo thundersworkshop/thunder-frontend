@@ -509,37 +509,38 @@
 
 <!-- MY PROFILE SECTION -->
 <div id="profile-section" class="tab-content">
-    <!-- Centered Vertical Layout Container -->
-    <div style="display: flex; flex-direction: column; gap: 20px; max-width: 600px; margin: 0 auto;">
-        
-        <!-- Profile Card (Always on Top) -->
-        <div class="data-card" style="border-radius: 16px;">
-            <h2 style="color: #10b981; margin-bottom: 20px;">My Profile</h2>
-            <div style="display: flex; flex-direction: column; gap: 15px; font-size: 14px;">
-                <div style="display: flex; justify-content: space-between; flex-wrap: wrap; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; gap: 10px;">
-                    <strong style="color: var(--text-main);">Username:</strong> <span id="profile-username" style="color: #10b981; font-weight: 600;">...</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; flex-wrap: wrap; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; gap: 10px;">
-                    <strong style="color: var(--text-main);">Full Name:</strong> <span id="profile-fullname" style="color: var(--text-sub);">...</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; flex-wrap: wrap; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; gap: 10px;">
-                    <strong style="color: var(--text-main);">Phone Number:</strong> <span id="profile-phone" style="color: var(--text-sub);">...</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; flex-wrap: wrap; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; gap: 10px;">
-                    <strong style="color: var(--text-main);">Email Address:</strong> 
-                    <span id="profile-email" style="color: #f43f5e; font-weight: 600; word-break: break-all; text-align: right;">...</span>
-                </div>
-                
-                <!-- SERVER STATUS INDICATOR -->
-                <div style="margin-top: 5px; padding-top: 5px; display: flex; justify-content: space-between; flex-wrap: wrap; align-items: center; gap: 10px;">
-                    <span style="font-weight: 600; color: var(--text-main); font-size: 14px;">Server Connection:</span>
-                    <span id="server-status" style="font-weight: 700; font-size: 12px; padding: 4px 10px; background: rgba(234, 179, 8, 0.1); color: #eab308; border-radius: 6px;">🟡 Checking...</span>
-                </div>
+    
+    <!-- Hero Profile Card (Always at the top, stretches to fit) -->
+    <div class="data-card" style="border-radius: 16px; margin-bottom: 20px;">
+        <h2 style="color: #10b981; margin-bottom: 20px;">My Profile</h2>
+        <div style="display: flex; flex-direction: column; gap: 15px; font-size: 14px;">
+            <div style="display: flex; justify-content: space-between; flex-wrap: wrap; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; gap: 10px;">
+                <strong style="color: var(--text-main);">Username:</strong> <span id="profile-username" style="color: #10b981; font-weight: 600;">...</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; flex-wrap: wrap; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; gap: 10px;">
+                <strong style="color: var(--text-main);">Full Name:</strong> <span id="profile-fullname" style="color: var(--text-sub);">...</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; flex-wrap: wrap; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; gap: 10px;">
+                <strong style="color: var(--text-main);">Phone Number:</strong> <span id="profile-phone" style="color: var(--text-sub);">...</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                <strong style="color: var(--text-main);">Email Address:</strong> 
+                <span id="profile-email" style="color: #f43f5e; font-weight: 600; word-break: break-all; text-align: right;">...</span>
+            </div>
+            
+            <!-- SERVER STATUS INDICATOR -->
+            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; flex-wrap: wrap; align-items: center; gap: 10px;">
+                <span style="font-weight: 600; color: var(--text-main); font-size: 14px;">Server Connection:</span>
+                <span id="server-status" style="font-weight: 700; font-size: 12px; padding: 4px 10px; background: rgba(234, 179, 8, 0.1); color: #eab308; border-radius: 6px;">🟡 Checking...</span>
             </div>
         </div>
+    </div>
 
+    <!-- Forms Container (Side-by-side on laptop, stacked on phone) -->
+    <div class="flex-row" style="flex-wrap: wrap; gap: 20px; align-items: flex-start;">
+        
         <!-- Edit Details -->
-        <div class="form-box" style="margin-bottom: 0;">
+        <div class="form-box" style="flex: 1; min-width: 300px; margin-bottom: 0;">
             <h4 style="margin-bottom: 15px; color: var(--text-main);">Update Details</h4>
             <form id="update-profile-form">
                 <input type="text" id="update-fullname" placeholder="New Full Name" required style="margin-bottom: 10px;">
@@ -549,7 +550,7 @@
         </div>
 
         <!-- Change Password -->
-        <div class="form-box" style="margin-bottom: 0;">
+        <div class="form-box" style="flex: 1; min-width: 300px; margin-bottom: 0;">
             <h4 style="margin-bottom: 15px; color: var(--text-main);">Change Password</h4>
             <form id="change-password-form">
                 <input type="password" id="old-password" placeholder="Current Password" required style="margin-bottom: 10px;">
