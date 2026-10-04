@@ -56,9 +56,9 @@
                         style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white;">
                     <input type="email" id="signup-email" placeholder="Email Address" required
                         style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white;">
-                    <input type="password" id="signup-password" placeholder="Create Password" required 
+                    <input type="password" id="signup-password" placeholder="Create Password" required
                         style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white;">
-                    <input type="password" id="signup-password-confirm" placeholder="Confirm Password" required 
+                    <input type="password" id="signup-password-confirm" placeholder="Confirm Password" required
                         style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white;">
                     <button type="submit" class="action-btn"
                         style="width: 100%; margin: 0; padding: 14px; background: linear-gradient(135deg, #10b981 0%, #059669 100%);"
@@ -70,21 +70,17 @@
 
             <!-- RIGHT COLUMN: Notes & Guidelines -->
             <div
-                style="flex: 1 1 350px; background: rgba(16, 185, 129, 0.05); padding: 40px; border-left: 1px solid var(--border-color, #334155); display: flex; flex-direction: column; justify-content: center;">
+                style="flex: 1 1 350px; background: rgba(16, 185, 129, 0.05); padding: 40px; border-left: 1px solid var(--border-color); display: flex; flex-direction: column; justify-content: center;">
                 <h3
-                    style="color: #fbbf24; margin-top: 0; margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
-                    <span style="font-size: 22px;">⚠️</span> Important Guidelines
+                    style="color: var(--text-main); margin-top: 0; margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 22px;">⚠️️</span> Important Guidelines
                 </h3>
                 <ul
-                    style="color: #cbd5e1; font-size: 14px; line-height: 1.6; margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 15px;">
-                    <li><strong>No Recovery:</strong> Do not forget your Email & Password. We cannot recover encrypted
-                        data.</li>
-                    <li><strong>Extract Regularly:</strong> For maximum performance, extract your data via PDF every 3
-                        months.</li>
-                    <li><strong>Routine Maintenance:</strong> Use the 'Deep Clean Database' setting quarterly to erase
-                        old records.</li>
-                    <li><strong>Total Privacy:</strong> Your data is fully isolated via secure tokens. No other user can
-                        view your ledger.</li>
+                    style="color: var(--text-sub); font-size: 14px; line-height: 1.6; margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 15px;">
+                    <li><strong>No Recovery:</strong> Do not forget your Email & Password. We cannot recover encrypted data.</li>
+                    <li><strong>Extract Regularly:</strong> For maximum performance, extract your data via PDF every 3 months.</li>
+                    <li><strong>Routine Maintenance:</strong> Use the 'Deep Clean Database' setting quarterly to erase old records.</li>
+                    <li><strong>Total Privacy:</strong> Your data is fully isolated via secure tokens. No other user can view your ledger.</li>
                 </ul>
             </div>
 
@@ -96,11 +92,24 @@
             document.getElementById('form-login').style.display = view === 'login' ? 'flex' : 'none';
             document.getElementById('form-signup').style.display = view === 'signup' ? 'flex' : 'none';
 
-            document.getElementById('tab-login').style.background = view === 'login' ? '#10b981' : 'transparent';
-            document.getElementById('tab-login').style.border = view === 'login' ? 'none' : '1px solid #334155';
+            const loginBtn = document.getElementById('tab-login');
+            const signupBtn = document.getElementById('tab-signup');
 
-            document.getElementById('tab-signup').style.background = view === 'signup' ? '#10b981' : 'transparent';
-            document.getElementById('tab-signup').style.border = view === 'signup' ? 'none' : '1px solid #334155';
+            if (view === 'login') {
+                // Log In Active
+                loginBtn.className = 'action-btn';
+                loginBtn.style = 'flex: 1; margin: 0; background: #10b981; border: 1px solid #059669; color: white;';
+                
+                signupBtn.className = 'secondary-btn';
+                signupBtn.style = 'flex: 1; margin: 0; background: transparent; border: 1px solid #94a3b8; color: var(--text-main);';
+            } else {
+                // Sign Up Active
+                signupBtn.className = 'action-btn';
+                signupBtn.style = 'flex: 1; margin: 0; background: #10b981; border: 1px solid #059669; color: white;';
+                
+                loginBtn.className = 'secondary-btn';
+                loginBtn.style = 'flex: 1; margin: 0; background: transparent; border: 1px solid #94a3b8; color: var(--text-main);';
+            }
         }
     </script>
 
@@ -500,10 +509,10 @@
 
             <!-- MY PROFILE SECTION -->
 <div id="profile-section" class="tab-content">
-    <div class="flex-row" style="flex-wrap: wrap; gap: 20px;">
+    <div class="flex-row" style="flex-wrap: wrap; gap: 20px; align-items: flex-start;">
         
         <!-- Profile Card -->
-        <div class="data-card" style="flex: 1; min-width: 300px;">
+        <div class="data-card" style="flex: 1; min-width: 300px; border-radius: 16px;">
             <h2 style="color: #10b981; margin-bottom: 20px;">My Profile</h2>
             <div style="display: flex; flex-direction: column; gap: 15px; font-size: 14px;">
                 <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
@@ -655,7 +664,8 @@
                             <h4 style="margin-bottom: 8px; color: var(--text-main); font-size: 14px;">Factory Reset
                                 Balances</h4>
                             <p style="font-size: 11px; color: var(--text-sub); margin-bottom: 15px;">Type
-                                <strong>CLEAR-BALANCES</strong> to reset your opening balances.</p>
+                                <strong>CLEAR-BALANCES</strong> to reset your opening balances.
+                            </p>
 
                             <input type="text" id="reset-confirm-input" placeholder="Type CLEAR-BALANCES"
                                 style="margin-bottom: 15px;">
@@ -673,7 +683,8 @@
                                 Database (Your Data Only)</h4>
                             <p style="font-size: 11px; color: var(--text-sub); margin-bottom: 15px;">Type
                                 <strong>DELETE-MY-DATA</strong> to start a 1-hour deletion timer for your personal
-                                records.</p>
+                                records.
+                            </p>
 
                             <input type="text" id="deep-clean-confirm-input" placeholder="Type DELETE-MY-DATA"
                                 style="margin-bottom: 15px;">

@@ -2,13 +2,13 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebas
 import { getAuth, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential, sendEmailVerification } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBP8B2KiK_EWxhLrRgeC6uxy1ItYQNbGC4",
-  authDomain: "thunders-workshop.firebaseapp.com",
-  projectId: "thunders-workshop",
-  storageBucket: "thunders-workshop.firebasestorage.app",
-  messagingSenderId: "41571220343",
-  appId: "1:41571220343:web:ab370784eb0bb09810ff72",
-  measurementId: "G-MBLS2GL06X"
+    apiKey: "AIzaSyBP8B2KiK_EWxhLrRgeC6uxy1ItYQNbGC4",
+    authDomain: "thunders-workshop.firebaseapp.com",
+    projectId: "thunders-workshop",
+    storageBucket: "thunders-workshop.firebasestorage.app",
+    messagingSenderId: "41571220343",
+    appId: "1:41571220343:web:ab370784eb0bb09810ff72",
+    measurementId: "G-MBLS2GL06X"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -17,7 +17,7 @@ const auth = getAuth(app);
 const API_URL = 'https://thunder-backend-esf1.onrender.com/api';
 
 let isAdminUnlocked = false; 
-let currentUserToken = null; // Stores the active user's secure token for API requests
+let currentUserToken = null; 
 
 let masterTransactions = [];
 let masterAuditLogs = [];
@@ -34,7 +34,9 @@ let currentSubFilters = { 'expense-section': '', 'cash-section': '', 'bank-secti
 let categoryChartInst = null;
 let cashflowChartInst = null;
 
-// Helper function to inject security tokens into API calls
+let deepCleanTimer;
+let timeLeft = 3600;
+
 function getAuthHeaders(isJson = false) {
     const headers = { 'Authorization': `Bearer ${currentUserToken}` };
     if (isJson) headers['Content-Type'] = 'application/json';
@@ -131,7 +133,6 @@ window.saveWeekStartDay = function() { localStorage.setItem('weekStartDay', docu
 async function loadData() {
     enforceDateRules(); 
     
-    // 1. Set to checking status
     const statusEl = document.getElementById('server-status');
     if (statusEl) {
         statusEl.innerHTML = '🟡 Connecting...';
@@ -141,8 +142,6 @@ async function loadData() {
 
     try {
         const res = await fetch(`${API_URL}/transactions`, { headers: getAuthHeaders() });
-        
-        // If the server doesn't respond properly, throw an error to trigger the red badge
         if (!res.ok) throw new Error('Server offline or auth failed');
 
         masterTransactions = await res.json();
@@ -158,6 +157,17 @@ async function loadData() {
             document.getElementById('opening-bank').value = settings.openingBank || 0;
             if(settings.editorUsername) document.getElementById('set-editor-username').value = settings.editorUsername;
             if(settings.editorPassword) document.getElementById('set-editor-pass').value = settings.editorPassword;
+            
+            // Check for persistent deletion timer
+            if (settings.deletionTimerStart) {
+                const elapsedSeconds = Math.floor((Date.now() - new Date(settings.deletionTimerStart).getTime()) / 1000);
+                timeLeft = 3600 - elapsedSeconds;
+                if (timeLeft > 0) {
+                    startTimerUI();
+                } else {
+                    executeDeepClean();
+                }
+            }
         }
 
         calculateBalances(masterTransactions, settings);
@@ -168,7 +178,6 @@ async function loadData() {
             processAndRenderTables();
         }
 
-        // 2. Set to success status
         if (statusEl) {
             statusEl.innerHTML = '🟢 Connected';
             statusEl.style.color = '#10b981';
@@ -177,8 +186,6 @@ async function loadData() {
 
     } catch (error) {
         console.error("Error connecting to Vault:", error);
-        
-        // 3. Set to failed status
         if (statusEl) {
             statusEl.innerHTML = '🔴 Offline / Error';
             statusEl.style.color = '#ef4444';
@@ -191,11 +198,7 @@ function renderDashboard() {
     const catCanvas = document.getElementById('categoryChart');
     const flowCanvas = document.getElementById('cashflowChart');
     
-    // SAFETY CATCH: If the HTML elements are missing or haven't loaded yet, abort drawing to prevent crash
-    if (!catCanvas || !flowCanvas) {
-        console.warn("Waiting for chart elements to be ready...");
-        return; 
-    }
+    if (!catCanvas || !flowCanvas) return; 
 
     const isDark = document.body.getAttribute('data-theme') === 'dark';
     const textColor = isDark ? '#f8fafc' : '#1e293b';
@@ -669,6 +672,11 @@ document.getElementById('entry-form').addEventListener('submit', async (e) => {
     const localDate = enforceDateRules();
     if (document.getElementById('date').value > localDate) return alert("Future/post-dated transactions are not allowed!");
 
+    let recordedByName = 'System';
+    if (auth.currentUser && auth.currentUser.displayName) {
+        recordedByName = auth.currentUser.displayName.split(' | ')[0];
+    }
+
     const newEntry = {
         date: document.getElementById('date').value,
         type: document.getElementById('type').value,
@@ -677,7 +685,7 @@ document.getElementById('entry-form').addEventListener('submit', async (e) => {
         category: document.getElementById('category').value,
         account: document.getElementById('account').value,
         notes: document.getElementById('notes').value,
-        recordedBy: document.getElementById('recorded-by').value 
+        recordedBy: recordedByName
     };
     await fetch(`${API_URL}/transactions`, { method: 'POST', headers: getAuthHeaders(true), body: JSON.stringify(newEntry) });
     document.getElementById('entry-form').reset();
@@ -699,9 +707,6 @@ window.openEditModal = function(id, date, type, particulars, amount, category, a
     const decodedNotes = decodeURIComponent(notes);
     document.getElementById('edit-notes').value = decodedNotes === '-' ? '' : decodedNotes;
     
-    const userField = document.getElementById('edit-recorded-by');
-    if (userField) userField.value = (recordedBy && recordedBy !== 'Unknown') ? recordedBy : 'System';
-
     const catDropdown = document.getElementById('edit-category');
     catDropdown.innerHTML = document.getElementById('category').innerHTML;
     if (type === 'Receipt' || type === 'Contra') { catDropdown.disabled = true; catDropdown.value = ''; } else { catDropdown.disabled = false; catDropdown.value = category; }
@@ -722,6 +727,11 @@ document.getElementById('edit-form').addEventListener('submit', async (e) => {
     const localDate = enforceDateRules();
     if (document.getElementById('edit-date').value > localDate) return alert("Future/post-dated transactions are not allowed!");
 
+    let recordedByName = 'System';
+    if (auth.currentUser && auth.currentUser.displayName) {
+        recordedByName = auth.currentUser.displayName.split(' | ')[0];
+    }
+
     const id = document.getElementById('edit-id').value;
     const updatedData = {
         date: document.getElementById('edit-date').value,
@@ -731,7 +741,7 @@ document.getElementById('edit-form').addEventListener('submit', async (e) => {
         category: document.getElementById('edit-category').value,
         account: document.getElementById('edit-account').value,
         notes: document.getElementById('edit-notes').value,
-        recordedBy: document.getElementById('edit-recorded-by').value 
+        recordedBy: recordedByName 
     };
     const editorUsername = document.getElementById('auth-editor-username').value.trim();
     const editorPassword = document.getElementById('auth-editor-pass').value.trim();
@@ -777,39 +787,6 @@ document.getElementById('balance-form').addEventListener('submit', async (e) => 
     alert("Opening Balances Updated!"); loadData(); 
 });
 
-window.requestOTP = async function() {
-    alert("Sending OTP to your email...");
-    const res = await fetch(`${API_URL}/security/send-otp`, { method: 'POST', headers: getAuthHeaders() });
-    const data = await res.json();
-    alert(data.message || data.error);
-}
-
-window.executeReset = async function() {
-    const otp = document.getElementById('reset-otp').value.trim();
-    const phrase = document.getElementById('reset-phrase').value.trim(); 
-    if(!otp || !phrase) return alert("Fill out both OTP and Phrase.");
-    const res = await fetch(`${API_URL}/security/reset-balances`, { method: 'POST', headers: getAuthHeaders(true), body: JSON.stringify({ otp, phrase }) });
-    const data = await res.json();
-    if(res.ok) { alert("Success: " + data.message); document.getElementById('reset-otp').value = ''; document.getElementById('reset-phrase').value = ''; loadData(); } else { alert("Error: " + data.error); }
-}
-
-window.requestWipe = async function() {
-    if(confirm("Start the cooling period to wipe the entire database?")) {
-        const res = await fetch(`${API_URL}/security/request-wipe`, { method: 'POST', headers: getAuthHeaders() });
-        const data = await res.json();
-        alert(data.message || data.error); loadData();
-    }
-}
-
-window.executeWipe = async function() {
-    const otp = document.getElementById('wipe-otp').value.trim();
-    const phrase = document.getElementById('wipe-phrase').value.trim();
-    if(!otp || !phrase) return alert("Fill out both OTP and Phrase.");
-    const res = await fetch(`${API_URL}/security/execute-wipe`, { method: 'POST', headers: getAuthHeaders(true), body: JSON.stringify({ otp, phrase }) });
-    const data = await res.json();
-    if(res.ok) { alert("Success: " + data.message); document.getElementById('wipe-otp').value = ''; document.getElementById('wipe-phrase').value = ''; loadData(); } else { alert("Error: " + data.error); }
-}
-
 document.getElementById('type').addEventListener('change', function(e) {
     const catSelect = document.getElementById('category');
     if (e.target.value === 'Receipt' || e.target.value === 'Contra') { catSelect.disabled = true; catSelect.required = false; catSelect.value = ''; } else { catSelect.disabled = false; catSelect.required = true; }
@@ -825,12 +802,9 @@ if(document.getElementById('edit-type')) {
 // -------------------------------------------------------------
 // FIREBASE AUTHENTICATION LOGIC (Multi-User & Email Verification)
 // -------------------------------------------------------------
-import { updateProfile, sendEmailVerification } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
 
-// 1. GLOBAL LOGIN/SIGNUP LISTENER 
 onAuthStateChanged(auth, async (user) => {
     if (user) {
-        // Enforce Email Verification Block
         if (!user.emailVerified) {
             currentUserToken = null;
             document.getElementById('global-login-wall').style.display = 'flex';
@@ -838,14 +812,10 @@ onAuthStateChanged(auth, async (user) => {
             return;
         }
 
-        // User is verified and logged in
         currentUserToken = await user.getIdToken();
         document.getElementById('global-login-wall').style.display = 'none';
-        
-        // FIX: Changed 'block' to 'flex' so the dashboard sits next to the sidebar
         document.querySelector('.app-window').style.display = 'flex'; 
         
-        // --- NEW: POPULATE PROFILE PAGE ---
         if (user.displayName) {
             const userDetails = user.displayName.split(' | ');
             document.getElementById('profile-username').innerText = userDetails[0] || 'N/A';
@@ -853,9 +823,7 @@ onAuthStateChanged(auth, async (user) => {
             document.getElementById('profile-phone').innerText = userDetails[2] || 'N/A';
         }
         document.getElementById('profile-email').innerText = user.email || 'N/A';
-        // ----------------------------------
         
-        // Load data and force the dashboard to render immediately
         await loadData();
         renderDashboard();
     } else {
@@ -865,7 +833,6 @@ onAuthStateChanged(auth, async (user) => {
     }
 });
 
-// 2. SIGN UP FORM HANDLER
 const formSignup = document.getElementById('form-signup');
 if (formSignup) {
     formSignup.addEventListener('submit', async (e) => {
@@ -875,36 +842,40 @@ if (formSignup) {
         const username = document.getElementById('signup-username').value;
         const email = document.getElementById('signup-email').value;
         const password = document.getElementById('signup-password').value;
+        const confirmPass = document.getElementById('signup-password-confirm').value;
         
         const btn = document.getElementById('btn-signup');
         const errorEl = document.getElementById('error-signup');
         
+        if (password !== confirmPass) {
+            errorEl.innerText = "Passwords do not match!";
+            errorEl.style.display = 'block';
+            return;
+        }
+
         btn.innerText = "Creating Account...";
         btn.disabled = true;
         errorEl.style.display = 'none';
 
         try {
-            // Create user in Firebase
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-            
-            // Save their username and details to their Firebase Profile
             await updateProfile(userCredential.user, { 
                 displayName: `${username} | ${fullname} | ${phone}` 
             });
-            
-            // Trigger Email Verification
             await sendEmailVerification(userCredential.user);
-            
-            // Force logout so they can't bypass verification
             await signOut(auth);
             
             alert("Account created! 📩 Please check your inbox and click the verification link before logging in.");
-            
-            // Switch back to Login view
             document.getElementById('form-signup').reset();
             toggleAuth('login');
         } catch (error) {
-            errorEl.innerText = "Sign Up Error: " + error.message;
+            // Translate Firebase Errors to Clean Text
+            let cleanMessage = "An error occurred. Please try again.";
+            if (error.code === 'auth/email-already-in-use') cleanMessage = "This email is already in use.";
+            if (error.code === 'auth/weak-password') cleanMessage = "Password should be at least 6 characters.";
+            if (error.code === 'auth/invalid-email') cleanMessage = "Invalid email format.";
+
+            errorEl.innerText = cleanMessage;
             errorEl.style.display = 'block';
         } finally {
             btn.innerText = "Create Account";
@@ -913,7 +884,6 @@ if (formSignup) {
     });
 }
 
-// 3. LOG IN FORM HANDLER
 const formLogin = document.getElementById('form-login');
 if (formLogin) {
     formLogin.addEventListener('submit', async (e) => {
@@ -930,8 +900,6 @@ if (formLogin) {
 
         try {
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
-            
-            // Check if they clicked the verification link
             if (!userCredential.user.emailVerified) {
                 await signOut(auth);
                 alert("🚨 Access Denied. You must verify your email address before logging in.");
@@ -939,12 +907,15 @@ if (formLogin) {
                 btn.disabled = false;
                 return;
             }
-            
-            // If verified, the onAuthStateChanged listener at the top will automatically let them in
             btn.innerText = "Access Vault";
             btn.disabled = false;
         } catch (error) {
-            errorEl.innerText = "Login Error: " + error.message;
+            // Translate Firebase Errors to Clean Text
+            let cleanMessage = "Incorrect email or password.";
+            if (error.code === 'auth/too-many-requests') cleanMessage = "Too many failed attempts. Try again later.";
+            if (error.code === 'auth/invalid-email') cleanMessage = "Invalid email format.";
+
+            errorEl.innerText = cleanMessage;
             errorEl.style.display = 'block';
             btn.innerText = "Access Vault";
             btn.disabled = false;
@@ -952,14 +923,12 @@ if (formLogin) {
     });
 }
 
-// 4. GLOBAL LOGOUT
 window.globalLogout = function() {
     signOut(auth).then(() => {
         window.location.reload();
     });
 };
 
-// 5. SETTINGS AUTHENTICATION (PASSWORD LOCK)
 const settingsAuthForm = document.getElementById('settings-auth-form');
 if (settingsAuthForm) {
     settingsAuthForm.addEventListener('submit', async (e) => {
@@ -972,9 +941,7 @@ if (settingsAuthForm) {
         btn.innerText = "Verifying...";
         
         try {
-            // Re-authenticate using Firebase Email/Password
             await signInWithEmailAndPassword(auth, email, pass);
-            
             isAdminUnlocked = true;
             document.getElementById('admin-login-box').style.display = 'none';
             document.getElementById('admin-zone').style.display = 'block';
@@ -996,7 +963,6 @@ window.logoutAdmin = function() {
     document.getElementById('audit-tab-btn').style.display = 'none';
     document.getElementById('admin-login-box').style.display = 'block';
     
-    // Send user back to the settings login screen
     const settingsTabBtn = document.querySelector('button[onclick*="settings-section"]');
     if(settingsTabBtn) openTab({ currentTarget: settingsTabBtn }, 'settings-section');
 };
@@ -1005,45 +971,11 @@ window.logoutAdmin = function() {
 // CRITICAL OPERATIONS & RESTORE LOGIC
 // ==========================================
 
-// 1. Factory Reset (Confirmation Text)
-document.getElementById('factory-reset-btn').addEventListener('click', async () => {
-    const confirmText = document.getElementById('reset-confirm-input').value;
-    if (confirmText !== 'CLEAR-BALANCES') {
-        return alert('Please type CLEAR-BALANCES exactly as shown to confirm.');
-    }
-    
-    try {
-        const res = await fetch(`${API_URL}/reset-balances`, {
-            method: 'POST',
-            headers: getAuthHeaders(true), // <-- UPDATE THIS LINE
-            body: JSON.stringify({ userId: auth.currentUser.uid })
-        });
-        if(res.ok) {
-            alert('Your opening balances have been successfully reset.');
-            document.getElementById('reset-confirm-input').value = '';
-            location.reload(); // Refresh to update UI
-        }
-    } catch (err) {
-        console.error('Reset failed:', err);
-    }
-});
-
-// 2. Deep Clean 1-Hour Timer
-let deepCleanTimer;
-let timeLeft = 3600; // 3600 seconds = 1 hour
-
-document.getElementById('initiate-clean-btn').addEventListener('click', () => {
-    const confirmText = document.getElementById('deep-clean-confirm-input').value;
-    if (confirmText !== 'DELETE-MY-DATA') {
-        return alert('Please type DELETE-MY-DATA exactly as shown to confirm.');
-    }
-    
-    // Hide inputs and show timer
+function startTimerUI() {
     document.getElementById('initiate-clean-btn').style.display = 'none';
     document.getElementById('deep-clean-confirm-input').disabled = true;
     document.getElementById('timer-container').style.display = 'block';
     
-    timeLeft = 3600;
     updateTimerUI();
     
     deepCleanTimer = setInterval(() => {
@@ -1054,16 +986,7 @@ document.getElementById('initiate-clean-btn').addEventListener('click', () => {
             executeDeepClean();
         }
     }, 1000);
-});
-
-document.getElementById('cancel-clean-btn').addEventListener('click', () => {
-    clearInterval(deepCleanTimer);
-    document.getElementById('initiate-clean-btn').style.display = 'inline-block';
-    document.getElementById('deep-clean-confirm-input').disabled = false;
-    document.getElementById('deep-clean-confirm-input').value = '';
-    document.getElementById('timer-container').style.display = 'none';
-    alert('Deep clean safely cancelled.');
-});
+}
 
 function updateTimerUI() {
     const minutes = Math.floor(timeLeft / 60);
@@ -1076,7 +999,7 @@ async function executeDeepClean() {
     try {
         const res = await fetch(`${API_URL}/deep-clean`, {
             method: 'POST',
-            headers: getAuthHeaders(true), // <-- UPDATE THIS LINE
+            headers: getAuthHeaders(true),
             body: JSON.stringify({ userId: auth.currentUser.uid })
         });
         if(res.ok) {
@@ -1088,15 +1011,59 @@ async function executeDeepClean() {
     }
 }
 
-// 3. Restore Modified Transaction Function
-// Attach this to your dynamically generated 'Restore' buttons in the Audit Log
+document.getElementById('factory-reset-btn').addEventListener('click', async () => {
+    const confirmText = document.getElementById('reset-confirm-input').value;
+    if (confirmText !== 'CLEAR-BALANCES') {
+        return alert('Please type CLEAR-BALANCES exactly as shown to confirm.');
+    }
+    
+    try {
+        const res = await fetch(`${API_URL}/reset-balances`, {
+            method: 'POST',
+            headers: getAuthHeaders(true),
+            body: JSON.stringify({ userId: auth.currentUser.uid })
+        });
+        if(res.ok) {
+            alert('Your opening balances have been successfully reset.');
+            document.getElementById('reset-confirm-input').value = '';
+            location.reload(); 
+        }
+    } catch (err) {
+        console.error('Reset failed:', err);
+    }
+});
+
+document.getElementById('initiate-clean-btn').addEventListener('click', async () => {
+    const confirmText = document.getElementById('deep-clean-confirm-input').value;
+    if (confirmText !== 'DELETE-MY-DATA') {
+        return alert('Please type DELETE-MY-DATA exactly as shown to confirm.');
+    }
+    
+    await fetch(`${API_URL}/schedule-clean`, { method: 'POST', headers: getAuthHeaders() });
+    
+    timeLeft = 3600;
+    startTimerUI();
+});
+
+document.getElementById('cancel-clean-btn').addEventListener('click', async () => {
+    clearInterval(deepCleanTimer);
+    
+    await fetch(`${API_URL}/cancel-clean`, { method: 'POST', headers: getAuthHeaders() });
+    
+    document.getElementById('initiate-clean-btn').style.display = 'inline-block';
+    document.getElementById('deep-clean-confirm-input').disabled = false;
+    document.getElementById('deep-clean-confirm-input').value = '';
+    document.getElementById('timer-container').style.display = 'none';
+    alert('Deep clean safely cancelled.');
+});
+
 window.restoreTransaction = async function(transactionId, originalAmount, logId) {
     if(!confirm(`Are you sure you want to restore this transaction to ₹${originalAmount}?`)) return;
 
     try {
         const res = await fetch(`${API_URL}/restore-transaction/${transactionId}`, {
             method: 'POST',
-            headers: getAuthHeaders(true), // <-- UPDATE THIS LINE
+            headers: getAuthHeaders(true),
             body: JSON.stringify({ 
                 userId: auth.currentUser.uid,
                 amount: Number(originalAmount),
@@ -1105,7 +1072,7 @@ window.restoreTransaction = async function(transactionId, originalAmount, logId)
         });
         if(res.ok) {
             alert('Transaction successfully restored to its original amount!');
-            location.reload(); // Refresh to show restored ledger
+            location.reload(); 
         } else {
             alert('Failed to restore transaction.');
         }
@@ -1113,11 +1080,11 @@ window.restoreTransaction = async function(transactionId, originalAmount, logId)
         console.error('Restore failed:', err);
     }
 };
+
 // ==========================================
 // NEW PROFILE & SECURITY LOGIC
 // ==========================================
 
-// 1. Update Profile Details (Name & Phone)
 document.getElementById('update-profile-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = e.target.querySelector('button');
@@ -1125,7 +1092,11 @@ document.getElementById('update-profile-form').addEventListener('submit', async 
     
     const newName = document.getElementById('update-fullname').value;
     const newPhone = document.getElementById('update-phone').value;
-    const username = auth.currentUser.displayName.split(' | ')[0]; // Keeps your original username
+    
+    let username = 'User';
+    if(auth.currentUser && auth.currentUser.displayName) {
+        username = auth.currentUser.displayName.split(' | ')[0]; 
+    }
     
     try {
         await updateProfile(auth.currentUser, { displayName: `${username} | ${newName} | ${newPhone}` });
@@ -1137,7 +1108,6 @@ document.getElementById('update-profile-form').addEventListener('submit', async 
     }
 });
 
-// 2. Change Password
 document.getElementById('change-password-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const oldPass = document.getElementById('old-password').value;
@@ -1149,11 +1119,9 @@ document.getElementById('change-password-form').addEventListener('submit', async
     
     btn.innerText = "Verifying...";
     try {
-        // Re-authenticate user to prove identity before changing password
         const credential = EmailAuthProvider.credential(auth.currentUser.email, oldPass);
         await reauthenticateWithCredential(auth.currentUser, credential);
         
-        // Update password
         await updatePassword(auth.currentUser, newPass);
         alert("Password updated securely!");
         e.target.reset();
