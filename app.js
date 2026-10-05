@@ -611,16 +611,14 @@ function renderTables(transactions, auditLogs, activeTab) {
             const old = log.originalData || {};
             const newD = log.newData || {}; 
             
-            const isRestored = log.action.includes('RESTORED');
-            const baseAction = log.action.replace(' (RESTORED)', '');
+            // If it says RESTORED, we check if newData exists to know if it was originally modified or deleted
+            const originalAction = log.newData ? 'MODIFIED' : 'DELETED';
+            const isRestored = log.action === 'RESTORED';
 
-            let statusBadge = `<strong>${baseAction}</strong>`;
-            let restoreBtn = `<button class="edit-btn" onclick="restoreEntry('${log._id}')">Restore</button>`;
-            
-            if (isRestored) {
-                statusBadge = `<strong>${baseAction}</strong><br><span style="color: #6366f1; font-size: 11px; font-weight: 800;">RESTORED</span>`;
-                restoreBtn = `<button class="secondary-btn" disabled style="opacity: 0.5; cursor: not-allowed;">Restored</button>`;
-            }
+            let statusBadge = `<strong style="${isRestored ? 'color: #6366f1;' : ''}">${log.action}</strong>`;
+            let restoreBtn = isRestored 
+                ? `<button class="secondary-btn" disabled style="opacity: 0.5; cursor: not-allowed;">Restored</button>`
+                : `<button class="edit-btn" onclick="restoreEntry('${log._id}')">Restore</button>`;
 
             let timeStr = log.dateChanged;
             if (!timeStr.includes('Z') && !timeStr.includes('T')) timeStr += " UTC";
@@ -629,11 +627,9 @@ function renderTables(transactions, auditLogs, activeTab) {
             
             let details = '';
             
-            // UPGRADED SMART DIFF LOGIC (Badge UI)
-            if (baseAction === 'MODIFIED' && log.newData) {
+            // SMART DIFF LAYOUT FOR MODIFIED
+            if (originalAction === 'MODIFIED') {
                 let changes = [];
-                
-                // Beautiful Flexbox Badge Layout
                 const diff = (label, o, n) => `
                     <div style="display: flex; align-items: center; margin-bottom: 6px; font-size: 13px; gap: 8px; flex-wrap: wrap;">
                         <span style="color: var(--text-sub); min-width: 80px; text-align: right; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">${label}</span>
@@ -648,19 +644,26 @@ function renderTables(transactions, auditLogs, activeTab) {
                 if (Number(old.amount) !== Number(newD.amount)) changes.push(diff('Amount', `₹${Number(old.amount).toLocaleString('en-IN')}`, `₹${Number(newD.amount).toLocaleString('en-IN')}`));
                 if ((old.category || '-') !== (newD.category || '-')) changes.push(diff('Category', old.category || '-', newD.category || '-'));
                 if (old.account !== newD.account) changes.push(diff('Account', old.account, newD.account));
-                if ((old.notes || '-') !== (newD.notes || '-')) changes.push(diff('Note', old.notes || '-', newD.notes || '-'));
 
-                // Wrap all changes in a subtle left-bordered container
                 details = changes.length > 0 
                     ? `<div style="border-left: 2px solid var(--border-color); padding-left: 10px; margin-top: 4px;">${changes.join('')}</div>` 
                     : `<span style="color: #64748b; font-style: italic;">No specific fields changed.</span>`;
-                    
-            } else if (baseAction === 'DELETED') {
-                details = `
-                    <div style="background: rgba(239, 68, 68, 0.05); padding: 8px; border-radius: 6px; border: 1px dashed rgba(239, 68, 68, 0.3);">
-                        <strong>Old Record:</strong> ${old.date} | ${old.particulars} (₹${Number(old.amount).toLocaleString('en-IN')})<br>
-                        <strong style="color: #ef4444; font-size: 12px; margin-top: 4px; display: inline-block;">STATUS: DELETED</strong>
+            } 
+            // BADGE LAYOUT FOR DELETED
+            else if (originalAction === 'DELETED') {
+                let delFields = [];
+                const delF = (label, val) => `
+                    <div style="display: flex; align-items: center; margin-bottom: 6px; font-size: 13px; gap: 8px; flex-wrap: wrap;">
+                        <span style="color: var(--text-sub); min-width: 80px; text-align: right; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">${label}</span>
+                        <span style="background: rgba(239, 68, 68, 0.1); color: #ef4444; padding: 2px 6px; border-radius: 4px;">${val}</span>
                     </div>`;
+                
+                delFields.push(delF('Date', old.date));
+                delFields.push(delF('Particulars', old.particulars));
+                delFields.push(delF('Amount', `₹${Number(old.amount).toLocaleString('en-IN')}`));
+                delFields.push(delF('Account', old.account));
+                
+                details = `<div style="border-left: 2px solid #ef4444; padding-left: 10px; margin-top: 4px;">${delFields.join('')}</div>`;
             }
             
             document.getElementById('audit-table-body').innerHTML += `<tr><td data-label="Log Time">${localTime}</td><td data-label="Status">${statusBadge}</td><td data-label="Record Details">${details}</td><td data-label="Action">${restoreBtn}</td></tr>`;
@@ -903,15 +906,13 @@ window.restoreEntry = async function(logId) {
 
         alert("Record successfully restored!");
         
-        // 3. Mark the log as RESTORED in the database & update instantly locally
+        // Force instant UI update to strictly "RESTORED"
         try {
             await fetch(`${API_URL}/audit-status/${logId}`, { method: 'PUT', headers: getAuthHeaders() });
-            log.action = log.action + ' (RESTORED)'; // Force instant UI update
-        } catch(e) { 
-            console.error(e); 
-        }
+            log.action = 'RESTORED'; 
+        } catch(e) { console.error(e); }
         
-        loadData(); // Refresh all tables
+        loadData(); // Refresh all tables instantly
 
     } catch (error) {
         alert("Restore failed: " + error.message);
