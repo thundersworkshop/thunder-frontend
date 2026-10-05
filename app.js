@@ -739,7 +739,7 @@ function calculateBalances(transactions, settings) {
             if (t.account === 'Cash') currentCash += amt; 
             if (t.account === 'Bank Account') currentBank += amt; 
         } 
-        // ADDED: Out (Not Related) deducts money just like an Expense
+        // ADDED: Payment deducts money just like an Expense
         else if (t.type === 'Expense' || t.type === 'Payment') {
             if (t.account === 'Cash') currentCash -= amt; 
             if (t.account === 'Bank Account') currentBank -= amt; 
@@ -807,7 +807,7 @@ window.openEditModal = function(id, date, type, particulars, amount, category, a
     
     const catDropdown = document.getElementById('edit-category');
     catDropdown.innerHTML = document.getElementById('category').innerHTML;
-    // ADDED: Check for Out (Not Related)
+    // ADDED: Check for Payment
     if (type === 'Receipt' || type === 'Contra' || type === 'Payment') {
         catDropdown.disabled = true; catDropdown.value = ''; 
     } else { 
@@ -992,7 +992,7 @@ document.getElementById('balance-form').addEventListener('submit', async (e) => 
 
 document.getElementById('type').addEventListener('change', function(e) {
     const catSelect = document.getElementById('category');
-    // ADDED: Disable category for Out (Not Related)
+    // ADDED: Disable category for Payment
     if (e.target.value === 'Receipt' || e.target.value === 'Contra' || e.target.value === 'Payment') {
         catSelect.disabled = true; catSelect.required = false; catSelect.value = ''; 
     } else { 
@@ -1003,7 +1003,7 @@ document.getElementById('type').addEventListener('change', function(e) {
 if(document.getElementById('edit-type')) {
     document.getElementById('edit-type').addEventListener('change', function(e) {
         const editCatSelect = document.getElementById('edit-category');
-        // ADDED: Disable category for Out (Not Related)
+        // ADDED: Disable category for Payment
         if (e.target.value === 'Receipt' || e.target.value === 'Contra' || e.target.value === 'Payment') {
             editCatSelect.disabled = true; editCatSelect.value = ''; 
         } else { 
