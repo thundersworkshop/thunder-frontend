@@ -420,28 +420,39 @@ window.exportTabToPDF = function() {
         foot = [['', '', '', 'TOTAL SEARCH AMOUNT:', `Rs. ${totalAmt.toLocaleString('en-IN')}`]];
     }
     else if (activeTab === 'audit-section') {
-        head = [['Log Time', 'Action', 'Original Record', 'Updated / New Record']];
+        // Reduced to 3 columns to give the diff text more room to breathe
+        head = [['Log Time', 'Action', 'Changed Fields']];
         body = masterAuditLogs.map(log => {
             
             const isRestored = log.action.includes('RESTORED');
             const baseAction = log.action.replace(' (RESTORED)', '');
 
-            // Force UTC conversion to Local Timezone
             let timeStr = log.dateChanged;
             if (!timeStr.includes('Z') && !timeStr.includes('T')) timeStr += " UTC";
             let localTime = new Date(timeStr).toLocaleString();
             if (localTime === 'Invalid Date') localTime = log.dateChanged;
             
-            let oldStr = log.originalData ? `${log.originalData.date} | ${log.originalData.particulars} | Rs. ${log.originalData.amount.toLocaleString('en-IN')}` : '-';
-            let newStr = '-';
+            const old = log.originalData || {};
+            const newD = log.newData || {};
+            let changeStr = '-';
             
+            // SMART DIFF LOGIC FOR PDF
             if (baseAction === 'MODIFIED' && log.newData) {
-                newStr = `${log.newData.date} | ${log.newData.particulars} | Rs. ${log.newData.amount.toLocaleString('en-IN')}`;
+                let changes = [];
+                if (old.date !== newD.date) changes.push(`Date: ${old.date} -> ${newD.date}`);
+                if (old.type !== newD.type) changes.push(`Type: ${old.type} -> ${newD.type}`);
+                if (old.particulars !== newD.particulars) changes.push(`Particulars: ${old.particulars} -> ${newD.particulars}`);
+                if (Number(old.amount) !== Number(newD.amount)) changes.push(`Amt: Rs.${Number(old.amount).toLocaleString('en-IN')} -> Rs.${Number(newD.amount).toLocaleString('en-IN')}`);
+                if ((old.category || '-') !== (newD.category || '-')) changes.push(`Cat: ${old.category || '-'} -> ${newD.category || '-'}`);
+                if (old.account !== newD.account) changes.push(`Acc: ${old.account} -> ${newD.account}`);
+                if ((old.notes || '-') !== (newD.notes || '-')) changes.push(`Note: ${old.notes || '-'} -> ${newD.notes || '-'}`);
+                
+                changeStr = changes.length > 0 ? changes.join(' | ') : 'No specific fields changed.';
             } else if (baseAction === 'DELETED') {
-                newStr = 'DELETED';
+                changeStr = `DELETED: ${old.date} | ${old.particulars} | Rs.${Number(old.amount).toLocaleString('en-IN')}`;
             }
             
-            return [localTime, log.action, oldStr, newStr];
+            return [localTime, log.action, changeStr];
         });
     }
 
@@ -597,10 +608,9 @@ function renderTables(transactions, auditLogs, activeTab) {
 
     if (activeTab === 'audit-section') {
         auditLogs.forEach(log => {
-            const old = log.originalData;
-            const newD = log.newData; 
+            const old = log.originalData || {};
+            const newD = log.newData || {}; 
             
-            // Separate the base action from the restored tag
             const isRestored = log.action.includes('RESTORED');
             const baseAction = log.action.replace(' (RESTORED)', '');
 
@@ -612,19 +622,29 @@ function renderTables(transactions, auditLogs, activeTab) {
                 restoreBtn = `<button class="secondary-btn" disabled style="opacity: 0.5; cursor: not-allowed;">Restored</button>`;
             }
 
-            // Force UTC conversion to Local Timezone
             let timeStr = log.dateChanged;
             if (!timeStr.includes('Z') && !timeStr.includes('T')) timeStr += " UTC";
             let localTime = new Date(timeStr).toLocaleString();
             if (localTime === 'Invalid Date') localTime = log.dateChanged; 
             
-            // Build the Old vs New display safely using baseAction
-            let details = `<strong>Old:</strong> ${old.date} | ${old.particulars} (₹${old.amount.toLocaleString('en-IN')})`;
+            let details = '';
             
-            if (baseAction === 'MODIFIED' && newD) {
-                details += `<br><strong style="color: #10b981;">New:</strong> ${newD.date} | ${newD.particulars} (₹${newD.amount.toLocaleString('en-IN')})`;
+            // SMART DIFF LOGIC (Only show changed fields)
+            if (baseAction === 'MODIFIED' && log.newData) {
+                let changes = [];
+                const diff = (label, o, n) => `<div style="font-size: 13px; margin-bottom: 3px;"><strong style="color: var(--text-main);">${label}:</strong> <strike style="color: #ef4444; opacity: 0.8;">${o}</strike> <span style="color: #10b981; font-weight: 600; margin-left: 4px;">➔ ${n}</span></div>`;
+                
+                if (old.date !== newD.date) changes.push(diff('Date', old.date, newD.date));
+                if (old.type !== newD.type) changes.push(diff('Type', old.type, newD.type));
+                if (old.particulars !== newD.particulars) changes.push(diff('Particulars', old.particulars, newD.particulars));
+                if (Number(old.amount) !== Number(newD.amount)) changes.push(diff('Amount', `₹${Number(old.amount).toLocaleString('en-IN')}`, `₹${Number(newD.amount).toLocaleString('en-IN')}`));
+                if ((old.category || '-') !== (newD.category || '-')) changes.push(diff('Category', old.category || '-', newD.category || '-'));
+                if (old.account !== newD.account) changes.push(diff('Account', old.account, newD.account));
+                if ((old.notes || '-') !== (newD.notes || '-')) changes.push(diff('Note', old.notes || '-', newD.notes || '-'));
+
+                details = changes.length > 0 ? changes.join('') : `<span style="color: #64748b; font-style: italic;">No specific fields changed.</span>`;
             } else if (baseAction === 'DELETED') {
-                details += `<br><strong style="color: #ef4444;">Status:</strong> Deleted`;
+                details = `<strong>Old Record:</strong> ${old.date} | ${old.particulars} (₹${Number(old.amount).toLocaleString('en-IN')})<br><strong style="color: #ef4444;">Status:</strong> Deleted`;
             }
             
             document.getElementById('audit-table-body').innerHTML += `<tr><td data-label="Log Time">${localTime}</td><td data-label="Status">${statusBadge}</td><td data-label="Record Details">${details}</td><td data-label="Action">${restoreBtn}</td></tr>`;
@@ -867,10 +887,15 @@ window.restoreEntry = async function(logId) {
 
         alert("Record successfully restored!");
         
-        // 3. Mark the log as RESTORED in the database
-        await fetch(`${API_URL}/audit-status/${logId}`, { method: 'PUT', headers: getAuthHeaders() });
+        // 3. Mark the log as RESTORED in the database & update instantly locally
+        try {
+            await fetch(`${API_URL}/audit-status/${logId}`, { method: 'PUT', headers: getAuthHeaders() });
+            log.action = log.action + ' (RESTORED)'; // Force instant UI update
+        } catch(e) { 
+            console.error(e); 
+        }
         
-        loadData(); // Refresh all tables instantly
+        loadData(); // Refresh all tables
 
     } catch (error) {
         alert("Restore failed: " + error.message);
