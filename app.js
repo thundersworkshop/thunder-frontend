@@ -216,7 +216,7 @@ function renderDashboard() {
             let amt = Number(t.amount);
             if (t.type === 'Receipt') flowData[monthKey].in += amt;
             // ADDED: Include generic outs in the cashflow bar chart
-            if (t.type === 'Expense' || t.type === 'Out (Not Related)') flowData[monthKey].out += amt; 
+            if (t.type === 'Expense' || t.type === 'Payment') flowData[monthKey].out += amt;
         }
     });
     
@@ -716,7 +716,7 @@ window.runUniversalSearch = function() {
         const editBtn = `<button class="edit-btn" onclick="openEditModal('${t._id}', '${t.date}', '${t.type}', '${encodeURIComponent(t.particulars)}', '${t.amount}', '${t.category || ''}', '${t.account}', '${encodeURIComponent(t.notes || '')}', '${t.recordedBy || 'System'}')">Edit</button>`;
         const delBtn = isAdminUnlocked ? `<button class="del-btn" onclick="deleteEntry('${t._id}')">Delete</button>` : `<button class="del-btn" disabled style="opacity: 0.3; cursor:not-allowed;">Locked</button>`;
         const actionCell = `${editBtn} ${delBtn}`;
-        let amtColor = t.type === 'Receipt' ? '#10b981' : ((t.type === 'Expense' || t.type === 'Out (Not Related)') ? '#ef4444' : 'inherit');
+        let amtColor = t.type === 'Receipt' ? '#10b981' : ((t.type === 'Expense' || t.type === 'Payment') ? '#ef4444' : 'inherit');
         tbody.innerHTML += `<tr><td data-label="Date">${t.date}</td><td data-label="Particulars">${t.particulars}</td><td data-label="Type">${t.type}</td><td data-label="Account">${t.account}</td><td data-label="Amount" style="color: ${amtColor}; font-weight: bold;">₹${t.amount}</td><td data-label="Action">${actionCell}</td></tr>`;
     });
 }
@@ -740,7 +740,7 @@ function calculateBalances(transactions, settings) {
             if (t.account === 'Bank Account') currentBank += amt; 
         } 
         // ADDED: Out (Not Related) deducts money just like an Expense
-        else if (t.type === 'Expense' || t.type === 'Out (Not Related)') { 
+        else if (t.type === 'Expense' || t.type === 'Payment') {
             if (t.account === 'Cash') currentCash -= amt; 
             if (t.account === 'Bank Account') currentBank -= amt; 
         } 
@@ -808,7 +808,7 @@ window.openEditModal = function(id, date, type, particulars, amount, category, a
     const catDropdown = document.getElementById('edit-category');
     catDropdown.innerHTML = document.getElementById('category').innerHTML;
     // ADDED: Check for Out (Not Related)
-    if (type === 'Receipt' || type === 'Contra' || type === 'Out (Not Related)') { 
+    if (type === 'Receipt' || type === 'Contra' || type === 'Payment') {
         catDropdown.disabled = true; catDropdown.value = ''; 
     } else { 
         catDropdown.disabled = false; catDropdown.value = category; 
@@ -993,7 +993,7 @@ document.getElementById('balance-form').addEventListener('submit', async (e) => 
 document.getElementById('type').addEventListener('change', function(e) {
     const catSelect = document.getElementById('category');
     // ADDED: Disable category for Out (Not Related)
-    if (e.target.value === 'Receipt' || e.target.value === 'Contra' || e.target.value === 'Out (Not Related)') { 
+    if (e.target.value === 'Receipt' || e.target.value === 'Contra' || e.target.value === 'Payment') {
         catSelect.disabled = true; catSelect.required = false; catSelect.value = ''; 
     } else { 
         catSelect.disabled = false; catSelect.required = true; 
@@ -1004,7 +1004,7 @@ if(document.getElementById('edit-type')) {
     document.getElementById('edit-type').addEventListener('change', function(e) {
         const editCatSelect = document.getElementById('edit-category');
         // ADDED: Disable category for Out (Not Related)
-        if (e.target.value === 'Receipt' || e.target.value === 'Contra' || e.target.value === 'Out (Not Related)') { 
+        if (e.target.value === 'Receipt' || e.target.value === 'Contra' || e.target.value === 'Payment') {
             editCatSelect.disabled = true; editCatSelect.value = ''; 
         } else { 
             editCatSelect.disabled = false; 
