@@ -812,35 +812,68 @@ document.getElementById('edit-form').addEventListener('submit', async (e) => {
     const localDate = enforceDateRules();
     if (document.getElementById('edit-date').value > localDate) return alert("Future/post-dated transactions are not allowed!");
 
+    const id = document.getElementById('edit-id').value;
+    
+    // 1. Grab all the new values from the form
+    const newDate = document.getElementById('edit-date').value;
+    const newType = document.getElementById('edit-type').value;
+    const newParticulars = document.getElementById('edit-particulars').value.trim();
+    const newAmount = Number(document.getElementById('edit-amount').value);
+    const newCategory = document.getElementById('edit-category').value;
+    const newAccount = document.getElementById('edit-account').value;
+    const newNotes = document.getElementById('edit-notes').value.trim();
+
+    // 2. SMART DIFF VALIDATOR: Block submission if nothing changed
+    const oldTx = masterTransactions.find(t => t._id === id);
+    if (oldTx) {
+        const oldNotes = oldTx.notes || '';
+        const oldCategory = oldTx.category || '';
+        
+        if (oldTx.date === newDate &&
+            oldTx.type === newType &&
+            oldTx.particulars === newParticulars &&
+            Number(oldTx.amount) === newAmount &&
+            oldCategory === newCategory &&
+            oldTx.account === newAccount &&
+            oldNotes === newNotes) {
+            
+            return alert("No changes detected! Please modify at least one field to save, or click 'Cancel' to close.");
+        }
+    }
+
     let recordedByName = 'System';
     if (auth.currentUser && auth.currentUser.displayName) {
         recordedByName = auth.currentUser.displayName.split(' | ')[0];
     }
 
-    const id = document.getElementById('edit-id').value;
     const updatedData = {
-        date: document.getElementById('edit-date').value,
-        type: document.getElementById('edit-type').value,
-        particulars: document.getElementById('edit-particulars').value,
-        amount: Number(document.getElementById('edit-amount').value),
-        category: document.getElementById('edit-category').value,
-        account: document.getElementById('edit-account').value,
-        notes: document.getElementById('edit-notes').value,
+        date: newDate,
+        type: newType,
+        particulars: newParticulars,
+        amount: newAmount,
+        category: newCategory,
+        account: newAccount,
+        notes: newNotes,
         recordedBy: recordedByName 
     };
+    
     const editorUsername = document.getElementById('auth-editor-username').value.trim();
     const editorPassword = document.getElementById('auth-editor-pass').value.trim();
-    const res = await fetch(`${API_URL}/transactions/${id}`, { method: 'PUT', headers: getAuthHeaders(true), body: JSON.stringify({ editorUsername, editorPassword, updatedData }) });
+    
+    const res = await fetch(`${API_URL}/transactions/${id}`, { 
+        method: 'PUT', 
+        headers: getAuthHeaders(true), 
+        body: JSON.stringify({ editorUsername, editorPassword, updatedData }) 
+    });
+    
     const data = await res.json();
-    if (res.ok) { alert("Transaction updated successfully!"); closeEditModal(); loadData(); } else { alert("Error: " + (data.error || "Authentication failed")); }
-});
-
-document.getElementById('editor-creds-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const editorUsername = document.getElementById('set-editor-username').value.trim();
-    const editorPassword = document.getElementById('set-editor-pass').value.trim();
-    await fetch(`${API_URL}/settings`, { method: 'POST', headers: getAuthHeaders(true), body: JSON.stringify({ editorUsername, editorPassword }) });
-    alert("Editor Credentials Saved Successfully!");
+    if (res.ok) { 
+        alert("Transaction updated successfully!"); 
+        closeEditModal(); 
+        loadData(); 
+    } else { 
+        alert("Error: " + (data.error || "Authentication failed")); 
+    }
 });
 
 window.deleteEntry = async function(id) {
