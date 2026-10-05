@@ -629,10 +629,18 @@ function renderTables(transactions, auditLogs, activeTab) {
             
             let details = '';
             
-            // SMART DIFF LOGIC (Only show changed fields)
+            // UPGRADED SMART DIFF LOGIC (Badge UI)
             if (baseAction === 'MODIFIED' && log.newData) {
                 let changes = [];
-                const diff = (label, o, n) => `<div style="font-size: 13px; margin-bottom: 3px;"><strong style="color: var(--text-main);">${label}:</strong> <strike style="color: #ef4444; opacity: 0.8;">${o}</strike> <span style="color: #10b981; font-weight: 600; margin-left: 4px;">➔ ${n}</span></div>`;
+                
+                // Beautiful Flexbox Badge Layout
+                const diff = (label, o, n) => `
+                    <div style="display: flex; align-items: center; margin-bottom: 6px; font-size: 13px; gap: 8px; flex-wrap: wrap;">
+                        <span style="color: var(--text-sub); min-width: 80px; text-align: right; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">${label}</span>
+                        <span style="background: rgba(239, 68, 68, 0.1); color: #ef4444; padding: 2px 6px; border-radius: 4px; text-decoration: line-through;">${o}</span>
+                        <span style="color: #64748b; font-size: 12px;">➔</span>
+                        <span style="background: rgba(16, 185, 129, 0.1); color: #10b981; padding: 2px 6px; border-radius: 4px; font-weight: 600;">${n}</span>
+                    </div>`;
                 
                 if (old.date !== newD.date) changes.push(diff('Date', old.date, newD.date));
                 if (old.type !== newD.type) changes.push(diff('Type', old.type, newD.type));
@@ -642,9 +650,17 @@ function renderTables(transactions, auditLogs, activeTab) {
                 if (old.account !== newD.account) changes.push(diff('Account', old.account, newD.account));
                 if ((old.notes || '-') !== (newD.notes || '-')) changes.push(diff('Note', old.notes || '-', newD.notes || '-'));
 
-                details = changes.length > 0 ? changes.join('') : `<span style="color: #64748b; font-style: italic;">No specific fields changed.</span>`;
+                // Wrap all changes in a subtle left-bordered container
+                details = changes.length > 0 
+                    ? `<div style="border-left: 2px solid var(--border-color); padding-left: 10px; margin-top: 4px;">${changes.join('')}</div>` 
+                    : `<span style="color: #64748b; font-style: italic;">No specific fields changed.</span>`;
+                    
             } else if (baseAction === 'DELETED') {
-                details = `<strong>Old Record:</strong> ${old.date} | ${old.particulars} (₹${Number(old.amount).toLocaleString('en-IN')})<br><strong style="color: #ef4444;">Status:</strong> Deleted`;
+                details = `
+                    <div style="background: rgba(239, 68, 68, 0.05); padding: 8px; border-radius: 6px; border: 1px dashed rgba(239, 68, 68, 0.3);">
+                        <strong>Old Record:</strong> ${old.date} | ${old.particulars} (₹${Number(old.amount).toLocaleString('en-IN')})<br>
+                        <strong style="color: #ef4444; font-size: 12px; margin-top: 4px; display: inline-block;">STATUS: DELETED</strong>
+                    </div>`;
             }
             
             document.getElementById('audit-table-body').innerHTML += `<tr><td data-label="Log Time">${localTime}</td><td data-label="Status">${statusBadge}</td><td data-label="Record Details">${details}</td><td data-label="Action">${restoreBtn}</td></tr>`;
