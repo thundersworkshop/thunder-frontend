@@ -77,10 +77,14 @@
                 </h3>
                 <ul
                     style="color: var(--text-sub); font-size: 14px; line-height: 1.6; margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 15px;">
-                    <li><strong>No Recovery:</strong> Do not forget your Email & Password. We cannot recover encrypted data.</li>
-                    <li><strong>Extract Regularly:</strong> For maximum performance, extract your data via PDF every 3 months.</li>
-                    <li><strong>Routine Maintenance:</strong> Use the 'Deep Clean Database' setting quarterly to erase old records.</li>
-                    <li><strong>Total Privacy:</strong> Your data is fully isolated via secure tokens. No other user can view your ledger.</li>
+                    <li><strong>No Recovery:</strong> Do not forget your Email & Password. We cannot recover encrypted
+                        data.</li>
+                    <li><strong>Extract Regularly:</strong> For maximum performance, extract your data via PDF every 3
+                        months.</li>
+                    <li><strong>Routine Maintenance:</strong> Use the 'Deep Clean Database' setting quarterly to erase
+                        old records.</li>
+                    <li><strong>Total Privacy:</strong> Your data is fully isolated via secure tokens. No other user can
+                        view your ledger.</li>
                 </ul>
             </div>
 
@@ -99,14 +103,14 @@
                 // Log In Active
                 loginBtn.className = 'action-btn';
                 loginBtn.style = 'flex: 1; margin: 0; background: #10b981; border: 1px solid #059669; color: white;';
-                
+
                 signupBtn.className = 'secondary-btn';
                 signupBtn.style = 'flex: 1; margin: 0; background: transparent; border: 1px solid #94a3b8; color: var(--text-main);';
             } else {
                 // Sign Up Active
                 signupBtn.className = 'action-btn';
                 signupBtn.style = 'flex: 1; margin: 0; background: #10b981; border: 1px solid #059669; color: white;';
-                
+
                 loginBtn.className = 'secondary-btn';
                 loginBtn.style = 'flex: 1; margin: 0; background: transparent; border: 1px solid #94a3b8; color: var(--text-main);';
             }
@@ -281,11 +285,13 @@
                     <form id="entry-form">
                         <div class="flex-row">
                             <div class="flex-1"><label>Date</label><input type="date" id="date" required></div>
-                            <div class="flex-1"><label>Entry Type</label><select id="type" required>
-                                    <option value="">Select Type...</option>
+                            <div class="flex-1"><label>Entry Type</label>
+                                <select id="type" required>
+                                    <option value="" disabled selected>Select Type...</option>
                                     <option value="Expense">Expense</option>
                                     <option value="Receipt">Receipt</option>
                                     <option value="Contra">Contra</option>
+                                    <option value="Out (Not Related)">Out (Not Related)</option>
                                 </select>
                             </div>
                         </div>
@@ -317,12 +323,15 @@
                     <div class="flex-row">
                         <div style="flex: 2; min-width: 0;"><label style="margin-top:0;">Search Any Value:</label><input
                                 type="text" id="uni-search" placeholder="Type a name, category, or amount..."></div>
-                        <div class="flex-1"><label style="margin-top:0;">Transaction Type:</label><select id="uni-type">
-                                <option value="">All Types</option>
-                                <option value="Expense">Expense</option>
-                                <option value="Receipt">Receipt</option>
-                                <option value="Contra">Contra</option>
-                            </select></div>
+                        <div class="flex-1"><label style="margin-top:0;">Transaction Type:</label>
+                            <select id="uni-type">
+    <option value="">All Types</option>
+    <option value="Expense">Expense</option>
+    <option value="Receipt">Receipt</option>
+    <option value="Contra">Contra</option>
+    <option value="Out (Not Related)">Out (Not Related)</option>
+</select>
+                        </div>
                     </div>
                     <div class="flex-row" style="margin-top: 15px;">
                         <div class="flex-1"><label style="margin-top:0;">From Date:</label><input type="date"
@@ -506,62 +515,80 @@
                 <button class="secondary-btn" onclick="nextPage()">Next ➡️</button>
             </div>
 
-<!-- MY PROFILE SECTION -->
-<div id="profile-section" class="tab-content">
-    
-    <!-- Hero Profile Card (Always at the top, stretches to fit) -->
-    <div class="data-card" style="border-radius: 16px; margin-bottom: 20px;">
-        <h2 style="color: #10b981; margin-bottom: 20px;">My Profile</h2>
-        <div style="display: flex; flex-direction: column; gap: 15px; font-size: 14px;">
-            <div style="display: flex; justify-content: space-between; flex-wrap: wrap; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; gap: 10px;">
-                <strong style="color: var(--text-main);">Username:</strong> <span id="profile-username" style="color: #10b981; font-weight: 600;">...</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; flex-wrap: wrap; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; gap: 10px;">
-                <strong style="color: var(--text-main);">Full Name:</strong> <span id="profile-fullname" style="color: var(--text-sub);">...</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; flex-wrap: wrap; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; gap: 10px;">
-                <strong style="color: var(--text-main);">Phone Number:</strong> <span id="profile-phone" style="color: var(--text-sub);">...</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
-                <strong style="color: var(--text-main);">Email Address:</strong> 
-                <span id="profile-email" style="color: #f43f5e; font-weight: 600; word-break: break-all; text-align: right;">...</span>
-            </div>
-            
-            <!-- SERVER STATUS INDICATOR -->
-            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; flex-wrap: wrap; align-items: center; gap: 10px;">
-                <span style="font-weight: 600; color: var(--text-main); font-size: 14px;">Server Connection:</span>
-                <span id="server-status" style="font-weight: 700; font-size: 12px; padding: 4px 10px; background: rgba(234, 179, 8, 0.1); color: #eab308; border-radius: 6px;">🟡 Checking...</span>
-            </div>
-        </div>
-    </div>
+            <!-- MY PROFILE SECTION -->
+            <div id="profile-section" class="tab-content">
 
-    <!-- Forms Container (Side-by-side on laptop, stacked on phone) -->
-    <div class="flex-row" style="flex-wrap: wrap; gap: 20px; align-items: flex-start;">
-        
-        <!-- Edit Details -->
-        <div class="form-box" style="flex: 1; min-width: 300px; margin-bottom: 0;">
-                <h4 style="margin-bottom: 15px; color: var(--text-main);">Update Details</h4>
-                <form id="update-profile-form">
-                    <!-- Changed to type="tel" to remove arrows, and removed "required" -->
-                    <input type="text" id="update-fullname" placeholder="New Full Name" style="margin-bottom: 10px;">
-                    <input type="tel" id="update-phone" placeholder="New Phone Number" style="margin-bottom: 10px;">
-                    <button type="submit" class="submit-btn" style="width: 100%;">Save Details</button>
-                </form>
-            </div>
+                <!-- Hero Profile Card (Always at the top, stretches to fit) -->
+                <div class="data-card" style="border-radius: 16px; margin-bottom: 20px;">
+                    <h2 style="color: #10b981; margin-bottom: 20px;">My Profile</h2>
+                    <div style="display: flex; flex-direction: column; gap: 15px; font-size: 14px;">
+                        <div
+                            style="display: flex; justify-content: space-between; flex-wrap: wrap; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; gap: 10px;">
+                            <strong style="color: var(--text-main);">Username:</strong> <span id="profile-username"
+                                style="color: #10b981; font-weight: 600;">...</span>
+                        </div>
+                        <div
+                            style="display: flex; justify-content: space-between; flex-wrap: wrap; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; gap: 10px;">
+                            <strong style="color: var(--text-main);">Full Name:</strong> <span id="profile-fullname"
+                                style="color: var(--text-sub);">...</span>
+                        </div>
+                        <div
+                            style="display: flex; justify-content: space-between; flex-wrap: wrap; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; gap: 10px;">
+                            <strong style="color: var(--text-main);">Phone Number:</strong> <span id="profile-phone"
+                                style="color: var(--text-sub);">...</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                            <strong style="color: var(--text-main);">Email Address:</strong>
+                            <span id="profile-email"
+                                style="color: #f43f5e; font-weight: 600; word-break: break-all; text-align: right;">...</span>
+                        </div>
 
-        <!-- Change Password -->
-        <div class="form-box" style="flex: 1; min-width: 300px; margin-bottom: 0;">
-            <h4 style="margin-bottom: 15px; color: var(--text-main);">Change Password</h4>
-            <form id="change-password-form">
-                <input type="password" id="old-password" placeholder="Current Password" required style="margin-bottom: 10px;">
-                <input type="password" id="new-password" placeholder="New Password" required style="margin-bottom: 10px;">
-                <input type="password" id="confirm-new-password" placeholder="Confirm New Password" required style="margin-bottom: 10px;">
-                <button type="submit" class="submit-btn" style="width: 100%; background: linear-gradient(135deg, #f97316 0%, #fb923c 100%);">Update Password</button>
-            </form>
-        </div>
-        
-    </div>
-</div>
+                        <!-- SERVER STATUS INDICATOR -->
+                        <div
+                            style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; flex-wrap: wrap; align-items: center; gap: 10px;">
+                            <span style="font-weight: 600; color: var(--text-main); font-size: 14px;">Server
+                                Connection:</span>
+                            <span id="server-status"
+                                style="font-weight: 700; font-size: 12px; padding: 4px 10px; background: rgba(234, 179, 8, 0.1); color: #eab308; border-radius: 6px;">🟡
+                                Checking...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Forms Container (Side-by-side on laptop, stacked on phone) -->
+                <div class="flex-row" style="flex-wrap: wrap; gap: 20px; align-items: flex-start;">
+
+                    <!-- Edit Details -->
+                    <div class="form-box" style="flex: 1; min-width: 300px; margin-bottom: 0;">
+                        <h4 style="margin-bottom: 15px; color: var(--text-main);">Update Details</h4>
+                        <form id="update-profile-form">
+                            <!-- Changed to type="tel" to remove arrows, and removed "required" -->
+                            <input type="text" id="update-fullname" placeholder="New Full Name"
+                                style="margin-bottom: 10px;">
+                            <input type="tel" id="update-phone" placeholder="New Phone Number"
+                                style="margin-bottom: 10px;">
+                            <button type="submit" class="submit-btn" style="width: 100%;">Save Details</button>
+                        </form>
+                    </div>
+
+                    <!-- Change Password -->
+                    <div class="form-box" style="flex: 1; min-width: 300px; margin-bottom: 0;">
+                        <h4 style="margin-bottom: 15px; color: var(--text-main);">Change Password</h4>
+                        <form id="change-password-form">
+                            <input type="password" id="old-password" placeholder="Current Password" required
+                                style="margin-bottom: 10px;">
+                            <input type="password" id="new-password" placeholder="New Password" required
+                                style="margin-bottom: 10px;">
+                            <input type="password" id="confirm-new-password" placeholder="Confirm New Password" required
+                                style="margin-bottom: 10px;">
+                            <button type="submit" class="submit-btn"
+                                style="width: 100%; background: linear-gradient(135deg, #f97316 0%, #fb923c 100%);">Update
+                                Password</button>
+                        </form>
+                    </div>
+
+                </div>
+            </div>
             <!-- SETTINGS -->
             <div id="settings-section" class="tab-content">
 
@@ -712,9 +739,9 @@
                         style="width: 100%; padding: 14px; margin-top: 10px;">🚪 Log Out of Settings</button>
                 </div>
             </div>
-        <!-- MOBILE BOTTOM SPACER -->
+            <!-- MOBILE BOTTOM SPACER -->
             <div style="height: 100px; width: 100%; display: block;"></div>
-            
+
         </main>
     </div>
 
@@ -729,11 +756,14 @@
                 <div class="flex-row" style="margin-bottom: 15px;">
                     <div class="flex-1"><label style="margin-top:0;">Date</label><input type="date" id="edit-date"
                             required></div>
-                    <div class="flex-1"><label style="margin-top:0;">Type</label><select id="edit-type" required>
-                            <option value="Expense">Expense</option>
-                            <option value="Receipt">Receipt</option>
-                            <option value="Contra">Contra</option>
-                        </select></div>
+                    <div class="flex-1"><label style="margin-top:0;">Type</label>
+                        <select id="edit-type" required>
+    <option value="Expense">Expense</option>
+    <option value="Receipt">Receipt</option>
+    <option value="Contra">Contra</option>
+    <option value="Out (Not Related)">Out (Not Related)</option>
+</select>
+</div>
                     <div class="flex-1"><label style="margin-top:0;">Account</label><select id="edit-account" required>
                             <option value="Cash">Cash</option>
                             <option value="Bank Account">Bank Account</option>

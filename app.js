@@ -211,9 +211,12 @@ function renderDashboard() {
     let monthExpenses = 0;
     let catTotals = {};
     masterTransactions.forEach(t => {
-        if (t.type === 'Expense' && t.date.startsWith(currentMonthStr)) {
-            monthExpenses += Number(t.amount);
-            catTotals[t.category] = (catTotals[t.category] || 0) + Number(t.amount);
+        let monthKey = t.date.substring(0, 7);
+        if (flowData[monthKey]) {
+            let amt = Number(t.amount);
+            if (t.type === 'Receipt') flowData[monthKey].in += amt;
+            // ADDED: Include generic outs in the cashflow bar chart
+            if (t.type === 'Expense' || t.type === 'Out (Not Related)') flowData[monthKey].out += amt; 
         }
     });
     
@@ -713,7 +716,7 @@ window.runUniversalSearch = function() {
         const editBtn = `<button class="edit-btn" onclick="openEditModal('${t._id}', '${t.date}', '${t.type}', '${encodeURIComponent(t.particulars)}', '${t.amount}', '${t.category || ''}', '${t.account}', '${encodeURIComponent(t.notes || '')}', '${t.recordedBy || 'System'}')">Edit</button>`;
         const delBtn = isAdminUnlocked ? `<button class="del-btn" onclick="deleteEntry('${t._id}')">Delete</button>` : `<button class="del-btn" disabled style="opacity: 0.3; cursor:not-allowed;">Locked</button>`;
         const actionCell = `${editBtn} ${delBtn}`;
-        let amtColor = t.type === 'Receipt' ? '#10b981' : (t.type === 'Expense' ? '#ef4444' : 'inherit');
+        let amtColor = t.type === 'Receipt' ? '#10b981' : ((t.type === 'Expense' || t.type === 'Out (Not Related)') ? '#ef4444' : 'inherit');
         tbody.innerHTML += `<tr><td data-label="Date">${t.date}</td><td data-label="Particulars">${t.particulars}</td><td data-label="Type">${t.type}</td><td data-label="Account">${t.account}</td><td data-label="Amount" style="color: ${amtColor}; font-weight: bold;">₹${t.amount}</td><td data-label="Action">${actionCell}</td></tr>`;
     });
 }
@@ -732,9 +735,19 @@ function calculateBalances(transactions, settings) {
     let currentBank = settings ? Number(settings.openingBank) || 0 : 0;
     transactions.forEach(t => {
         const amt = Number(t.amount) || 0;
-        if (t.type === 'Receipt') { if (t.account === 'Cash') currentCash += amt; if (t.account === 'Bank Account') currentBank += amt; } 
-        else if (t.type === 'Expense') { if (t.account === 'Cash') currentCash -= amt; if (t.account === 'Bank Account') currentBank -= amt; } 
-        else if (t.type === 'Contra') { if (t.account === 'Cash') { currentCash -= amt; currentBank += amt; } else if (t.account === 'Bank Account') { currentBank -= amt; currentCash += amt; } }
+        if (t.type === 'Receipt') { 
+            if (t.account === 'Cash') currentCash += amt; 
+            if (t.account === 'Bank Account') currentBank += amt; 
+        } 
+        // ADDED: Out (Not Related) deducts money just like an Expense
+        else if (t.type === 'Expense' || t.type === 'Out (Not Related)') { 
+            if (t.account === 'Cash') currentCash -= amt; 
+            if (t.account === 'Bank Account') currentBank -= amt; 
+        } 
+        else if (t.type === 'Contra') { 
+            if (t.account === 'Cash') { currentCash -= amt; currentBank += amt; } 
+            else if (t.account === 'Bank Account') { currentBank -= amt; currentCash += amt; } 
+        }
     });
     document.getElementById('live-cash').innerText = currentCash.toLocaleString('en-IN');
     document.getElementById('live-bank').innerText = currentBank.toLocaleString('en-IN');
@@ -794,7 +807,12 @@ window.openEditModal = function(id, date, type, particulars, amount, category, a
     
     const catDropdown = document.getElementById('edit-category');
     catDropdown.innerHTML = document.getElementById('category').innerHTML;
-    if (type === 'Receipt' || type === 'Contra') { catDropdown.disabled = true; catDropdown.value = ''; } else { catDropdown.disabled = false; catDropdown.value = category; }
+    // ADDED: Check for Out (Not Related)
+    if (type === 'Receipt' || type === 'Contra' || type === 'Out (Not Related)') { 
+        catDropdown.disabled = true; catDropdown.value = ''; 
+    } else { 
+        catDropdown.disabled = false; catDropdown.value = category; 
+    }
     
     enforceDateRules(); 
     document.getElementById('edit-modal').style.display = 'flex';
@@ -974,13 +992,23 @@ document.getElementById('balance-form').addEventListener('submit', async (e) => 
 
 document.getElementById('type').addEventListener('change', function(e) {
     const catSelect = document.getElementById('category');
-    if (e.target.value === 'Receipt' || e.target.value === 'Contra') { catSelect.disabled = true; catSelect.required = false; catSelect.value = ''; } else { catSelect.disabled = false; catSelect.required = true; }
+    // ADDED: Disable category for Out (Not Related)
+    if (e.target.value === 'Receipt' || e.target.value === 'Contra' || e.target.value === 'Out (Not Related)') { 
+        catSelect.disabled = true; catSelect.required = false; catSelect.value = ''; 
+    } else { 
+        catSelect.disabled = false; catSelect.required = true; 
+    }
 });
 
 if(document.getElementById('edit-type')) {
     document.getElementById('edit-type').addEventListener('change', function(e) {
         const editCatSelect = document.getElementById('edit-category');
-        if (e.target.value === 'Receipt' || e.target.value === 'Contra') { editCatSelect.disabled = true; editCatSelect.value = ''; } else { editCatSelect.disabled = false; }
+        // ADDED: Disable category for Out (Not Related)
+        if (e.target.value === 'Receipt' || e.target.value === 'Contra' || e.target.value === 'Out (Not Related)') { 
+            editCatSelect.disabled = true; editCatSelect.value = ''; 
+        } else { 
+            editCatSelect.disabled = false; 
+        }
     });
 }
 
