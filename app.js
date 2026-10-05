@@ -324,12 +324,16 @@ function processAndRenderTables() {
     });
 
     filteredTx.sort((a, b) => {
-        if (currentSort === 'date-desc') return new Date(b.date) - new Date(a.date);
-        if (currentSort === 'date-asc') return new Date(a.date) - new Date(b.date);
-        if (currentSort === 'amount-desc') return b.amount - a.amount;
-        if (currentSort === 'amount-asc') return a.amount - b.amount;
-        if (currentSort === 'particulars-asc') return a.particulars.localeCompare(b.particulars);
-        if (currentSort === 'particulars-desc') return b.particulars.localeCompare(a.particulars);
+        if (currentSort === 'date-desc') return new Date(b.date || 0) - new Date(a.date || 0);
+        if (currentSort === 'date-asc') return new Date(a.date || 0) - new Date(b.date || 0);
+        if (currentSort === 'amount-desc') return (b.amount || 0) - (a.amount || 0);
+        if (currentSort === 'amount-asc') return (a.amount || 0) - (b.amount || 0);
+        
+        // Safe string sorting for older data
+        const partA = a.particulars || '';
+        const partB = b.particulars || '';
+        if (currentSort === 'particulars-asc') return partA.localeCompare(partB);
+        if (currentSort === 'particulars-desc') return partB.localeCompare(partA);
     });
 
     currentFilteredData = filteredTx;
