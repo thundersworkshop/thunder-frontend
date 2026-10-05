@@ -389,26 +389,26 @@ window.exportTabToPDF = function() {
     let foot = [];
     
     if (activeTab === 'expense-section') {
-        head = [['Date', 'Particulars', 'Category', 'Account', 'Amount', 'Note', 'Recorded By']];
+        head = [['Date', 'Particulars', 'Category', 'Account', 'Amount', 'Note']];
         let totalExp = 0;
         body = currentFilteredData.map(t => {
             totalExp += Number(t.amount);
-            return [t.date, t.particulars, t.category || '-', t.account, `Rs. ${t.amount.toLocaleString('en-IN')}`, t.notes || '-', t.recordedBy || 'Unknown'];
+            return [t.date, t.particulars, t.category || '-', t.account, `Rs. ${t.amount.toLocaleString('en-IN')}`, t.notes || '-'];
         });
-        foot = [['', '', '', 'TOTAL EXPENSES:', `Rs. ${totalExp.toLocaleString('en-IN')}`, '', '']];
+        foot = [['', '', '', 'TOTAL EXPENSES:', `Rs. ${totalExp.toLocaleString('en-IN')}`, '']];
     } 
     else if (activeTab === 'cash-section' || activeTab === 'bank-section') {
-        head = [['Date', 'Particulars', 'Type', 'Amount', 'Note', 'Recorded By']];
+        head = [['Date', 'Particulars', 'Type', 'Amount', 'Note']];
         let totalIn = 0;
         let totalOut = 0;
         body = currentFilteredData.map(t => {
             let isInc = (t.type === 'Receipt' && t.account === (activeTab === 'cash-section' ? 'Cash' : 'Bank Account')) || (t.type === 'Contra' && t.account === (activeTab === 'cash-section' ? 'Bank Account' : 'Cash'));
             if (isInc) totalIn += Number(t.amount); else totalOut += Number(t.amount);
             let typeStr = isInc ? 'IN' : 'OUT';
-            return [t.date, t.particulars, t.type, `Rs. ${t.amount.toLocaleString('en-IN')} (${typeStr})`, t.notes || '-', t.recordedBy || 'Unknown'];
+            return [t.date, t.particulars, t.type, `Rs. ${t.amount.toLocaleString('en-IN')} (${typeStr})`, t.notes || '-'];
         });
         let net = totalIn - totalOut;
-        foot = [['', '', 'NET TOTAL:', `IN: Rs.${totalIn.toLocaleString('en-IN')} | OUT: Rs.${totalOut.toLocaleString('en-IN')} | NET: Rs.${net.toLocaleString('en-IN')}`, '', '']];
+        foot = [['', '', 'NET TOTAL:', `IN: Rs.${totalIn.toLocaleString('en-IN')} | OUT: Rs.${totalOut.toLocaleString('en-IN')} | NET: Rs.${net.toLocaleString('en-IN')}`, '']];
     } 
     else if (activeTab === 'search-section') {
         head = [['Date', 'Particulars', 'Type', 'Account', 'Amount']];
@@ -420,8 +420,29 @@ window.exportTabToPDF = function() {
         foot = [['', '', '', 'TOTAL SEARCH AMOUNT:', `Rs. ${totalAmt.toLocaleString('en-IN')}`]];
     }
     else if (activeTab === 'audit-section') {
-        head = [['Log Date', 'Status', 'Original Date', 'Particulars', 'Amount', 'Recorded By']];
-        body = masterAuditLogs.map(log => [log.dateChanged, log.action, log.originalData.date, log.originalData.particulars, `Rs. ${log.originalData.amount.toLocaleString('en-IN')}`, log.originalData.recordedBy || 'Unknown']);
+        head = [['Log Time', 'Action', 'Original Record', 'Updated / New Record']];
+        body = masterAuditLogs.map(log => {
+            
+            const isRestored = log.action.includes('RESTORED');
+            const baseAction = log.action.replace(' (RESTORED)', '');
+
+            // Force UTC conversion to Local Timezone
+            let timeStr = log.dateChanged;
+            if (!timeStr.includes('Z') && !timeStr.includes('T')) timeStr += " UTC";
+            let localTime = new Date(timeStr).toLocaleString();
+            if (localTime === 'Invalid Date') localTime = log.dateChanged;
+            
+            let oldStr = log.originalData ? `${log.originalData.date} | ${log.originalData.particulars} | Rs. ${log.originalData.amount.toLocaleString('en-IN')}` : '-';
+            let newStr = '-';
+            
+            if (baseAction === 'MODIFIED' && log.newData) {
+                newStr = `${log.newData.date} | ${log.newData.particulars} | Rs. ${log.newData.amount.toLocaleString('en-IN')}`;
+            } else if (baseAction === 'DELETED') {
+                newStr = 'DELETED';
+            }
+            
+            return [localTime, log.action, oldStr, newStr];
+        });
     }
 
     doc.autoTable({
@@ -459,7 +480,7 @@ window.generateMasterPDF = function() {
     doc.text(`Generated On: ${new Date().toLocaleString()}`, 14, 40);
 
     let totalAmt = 0;
-    const head = [['Date', 'Ledger', 'Particulars', 'Type', 'Category', 'Amount', 'Recorded By']];
+    const head = [['Date', 'Ledger', 'Particulars', 'Type', 'Category', 'Amount']];
     const body = exportData.map(t => {
         totalAmt += Number(t.amount);
         return [
@@ -468,12 +489,11 @@ window.generateMasterPDF = function() {
             t.particulars, 
             t.type, 
             t.category || '-', 
-            `Rs. ${t.amount.toLocaleString('en-IN')}`,
-            t.recordedBy || 'Unknown'
+            `Rs. ${t.amount.toLocaleString('en-IN')}`
         ];
     });
     
-    const foot = [['', '', '', '', 'GRAND TOTAL:', `Rs. ${totalAmt.toLocaleString('en-IN')}`, '']];
+    const foot = [['', '', '', '', 'GRAND TOTAL:', `Rs. ${totalAmt.toLocaleString('en-IN')}`]];
 
     doc.autoTable({
         startY: 48,
@@ -578,10 +598,36 @@ function renderTables(transactions, auditLogs, activeTab) {
     if (activeTab === 'audit-section') {
         auditLogs.forEach(log => {
             const old = log.originalData;
-            const restoreBtn = `<button class="edit-btn" onclick="restoreEntry('${log._id}')">Restore</button>`;
-            let details = `${old.date} | ${old.particulars} (₹${old.amount.toLocaleString('en-IN')})`;
-            let user = old.recordedBy || '<span style="opacity:0.5">Unknown</span>';
-            document.getElementById('audit-table-body').innerHTML += `<tr><td data-label="Log Date">${log.dateChanged}</td><td data-label="Status"><strong>${log.action}</strong></td><td data-label="Original Details">${details}</td><td data-label="Recorded By">${user}</td><td data-label="Action">${restoreBtn}</td></tr>`;
+            const newD = log.newData; 
+            
+            // Separate the base action from the restored tag
+            const isRestored = log.action.includes('RESTORED');
+            const baseAction = log.action.replace(' (RESTORED)', '');
+
+            let statusBadge = `<strong>${baseAction}</strong>`;
+            let restoreBtn = `<button class="edit-btn" onclick="restoreEntry('${log._id}')">Restore</button>`;
+            
+            if (isRestored) {
+                statusBadge = `<strong>${baseAction}</strong><br><span style="color: #6366f1; font-size: 11px; font-weight: 800;">RESTORED</span>`;
+                restoreBtn = `<button class="secondary-btn" disabled style="opacity: 0.5; cursor: not-allowed;">Restored</button>`;
+            }
+
+            // Force UTC conversion to Local Timezone
+            let timeStr = log.dateChanged;
+            if (!timeStr.includes('Z') && !timeStr.includes('T')) timeStr += " UTC";
+            let localTime = new Date(timeStr).toLocaleString();
+            if (localTime === 'Invalid Date') localTime = log.dateChanged; 
+            
+            // Build the Old vs New display safely using baseAction
+            let details = `<strong>Old:</strong> ${old.date} | ${old.particulars} (₹${old.amount.toLocaleString('en-IN')})`;
+            
+            if (baseAction === 'MODIFIED' && newD) {
+                details += `<br><strong style="color: #10b981;">New:</strong> ${newD.date} | ${newD.particulars} (₹${newD.amount.toLocaleString('en-IN')})`;
+            } else if (baseAction === 'DELETED') {
+                details += `<br><strong style="color: #ef4444;">Status:</strong> Deleted`;
+            }
+            
+            document.getElementById('audit-table-body').innerHTML += `<tr><td data-label="Log Time">${localTime}</td><td data-label="Status">${statusBadge}</td><td data-label="Record Details">${details}</td><td data-label="Action">${restoreBtn}</td></tr>`;
         });
     }
 }
@@ -763,9 +809,73 @@ window.deleteEntry = async function(id) {
     if (confirm("Move to Audit Trail?")) { await fetch(`${API_URL}/transactions/${id}`, { method: 'DELETE', headers: { 'admin-access': 'true', 'Authorization': `Bearer ${currentUserToken}` } }); loadData(); }
 }
 
-window.restoreEntry = async function(id) {
-    if (confirm("Restore this record back to the Master Ledger?")) { await fetch(`${API_URL}/audit/restore/${id}`, { method: 'POST', headers: getAuthHeaders() }); alert("Record Restored!"); loadData(); }
-}
+window.restoreEntry = async function(logId) {
+    if (!confirm("Restore this record back to its exact original state?")) return;
+
+    // 1. Find the exact log the user clicked
+    const log = masterAuditLogs.find(l => l._id === logId);
+    if (!log) return alert("Error: Log data not found.");
+
+    const old = log.originalData;
+    const txId = log.transactionId || old._id; 
+    
+    // 2. Grab Editor Credentials from the Settings tab
+    const editorUsername = document.getElementById('set-editor-username').value;
+    const editorPassword = document.getElementById('set-editor-pass').value;
+
+    try {
+        const baseAction = log.action.replace(' (RESTORED)', '');
+
+        if (baseAction === 'MODIFIED') {
+            const res = await fetch(`${API_URL}/transactions/${txId}`, {
+                method: 'PUT',
+                headers: getAuthHeaders(true),
+                body: JSON.stringify({ 
+                    editorUsername: editorUsername, 
+                    editorPassword: editorPassword, 
+                    updatedData: {
+                        date: old.date,
+                        type: old.type,
+                        particulars: old.particulars,
+                        amount: Number(old.amount),
+                        category: old.category,
+                        account: old.account,
+                        notes: old.notes
+                    }
+                })
+            });
+            const data = await res.json();
+            if(!res.ok) throw new Error(data.error || "Server rejected the modification request.");
+        } 
+        else if (baseAction === 'DELETED') {
+            const res = await fetch(`${API_URL}/transactions`, {
+                method: 'POST',
+                headers: getAuthHeaders(true),
+                body: JSON.stringify({
+                    date: old.date,
+                    type: old.type,
+                    particulars: old.particulars,
+                    amount: Number(old.amount),
+                    category: old.category,
+                    account: old.account,
+                    notes: old.notes
+                })
+            });
+            const data = await res.json();
+            if(!res.ok) throw new Error(data.error || "Server rejected the recreation request.");
+        }
+
+        alert("Record successfully restored!");
+        
+        // 3. Mark the log as RESTORED in the database
+        await fetch(`${API_URL}/audit-status/${logId}`, { method: 'PUT', headers: getAuthHeaders() });
+        
+        loadData(); // Refresh all tables instantly
+
+    } catch (error) {
+        alert("Restore failed: " + error.message);
+    }
+};
 
 document.getElementById('category-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -869,7 +979,6 @@ if (formSignup) {
             document.getElementById('form-signup').reset();
             toggleAuth('login');
         } catch (error) {
-            // Translate Firebase Errors to Clean Text
             let cleanMessage = "An error occurred. Please try again.";
             if (error.code === 'auth/email-already-in-use') cleanMessage = "This email is already in use.";
             if (error.code === 'auth/weak-password') cleanMessage = "Password should be at least 6 characters.";
@@ -910,7 +1019,6 @@ if (formLogin) {
             btn.innerText = "Access Vault";
             btn.disabled = false;
         } catch (error) {
-            // Translate Firebase Errors to Clean Text
             let cleanMessage = "Incorrect email or password.";
             if (error.code === 'auth/too-many-requests') cleanMessage = "Too many failed attempts. Try again later.";
             if (error.code === 'auth/invalid-email') cleanMessage = "Invalid email format.";
@@ -968,7 +1076,7 @@ window.logoutAdmin = function() {
 };
 
 // ==========================================
-// CRITICAL OPERATIONS & RESTORE LOGIC
+// CRITICAL OPERATIONS
 // ==========================================
 
 function startTimerUI() {
@@ -1057,49 +1165,40 @@ document.getElementById('cancel-clean-btn').addEventListener('click', async () =
     alert('Deep clean safely cancelled.');
 });
 
-window.restoreTransaction = async function(transactionId, originalAmount, logId) {
-    if(!confirm(`Are you sure you want to restore this transaction to ₹${originalAmount}?`)) return;
-
-    try {
-        const res = await fetch(`${API_URL}/restore-transaction/${transactionId}`, {
-            method: 'POST',
-            headers: getAuthHeaders(true),
-            body: JSON.stringify({ 
-                userId: auth.currentUser.uid,
-                amount: Number(originalAmount),
-                logId: logId
-            })
-        });
-        if(res.ok) {
-            alert('Transaction successfully restored to its original amount!');
-            location.reload(); 
-        } else {
-            alert('Failed to restore transaction.');
-        }
-    } catch (err) {
-        console.error('Restore failed:', err);
-    }
-};
-
 // ==========================================
 // NEW PROFILE & SECURITY LOGIC
 // ==========================================
 
+// 1. Update Profile Details (Name & Phone Optional)
 document.getElementById('update-profile-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = e.target.querySelector('button');
+    
+    const newNameInput = document.getElementById('update-fullname').value.trim();
+    const newPhoneInput = document.getElementById('update-phone').value.trim();
+    
+    if (!newNameInput && !newPhoneInput) {
+        return alert("Please enter a new name or phone number to update.");
+    }
+
     btn.innerText = "Saving...";
+
+    let currentUsername = 'User';
+    let currentName = 'N/A';
+    let currentPhone = 'N/A';
     
-    const newName = document.getElementById('update-fullname').value;
-    const newPhone = document.getElementById('update-phone').value;
-    
-    let username = 'User';
-    if(auth.currentUser && auth.currentUser.displayName) {
-        username = auth.currentUser.displayName.split(' | ')[0]; 
+    if (auth.currentUser && auth.currentUser.displayName) {
+        const parts = auth.currentUser.displayName.split(' | ');
+        currentUsername = parts[0] || 'User';
+        currentName = parts[1] || 'N/A';
+        currentPhone = parts[2] || 'N/A';
     }
     
+    const finalName = newNameInput ? newNameInput : currentName;
+    const finalPhone = newPhoneInput ? newPhoneInput : currentPhone;
+    
     try {
-        await updateProfile(auth.currentUser, { displayName: `${username} | ${newName} | ${newPhone}` });
+        await updateProfile(auth.currentUser, { displayName: `${currentUsername} | ${finalName} | ${finalPhone}` });
         alert("Profile details updated successfully!");
         location.reload();
     } catch (error) {

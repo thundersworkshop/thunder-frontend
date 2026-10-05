@@ -88,7 +88,7 @@ body { font-family: 'Poppins', sans-serif; color: var(--text-main); background: 
 h2 { color: var(--text-main); font-size: 16px; font-weight: 700; margin-bottom: 15px; transition: color 0.3s ease; }
 label { display: block; font-size: 11px; font-weight: 600; color: var(--text-sub); margin-bottom: 4px; margin-top: 10px; transition: color 0.3s ease; }
 
-input[type="text"], input[type="number"], input[type="date"], input[type="password"], select { width: 100%; padding: 10px 14px; background-color: var(--input-bg); border: 2px solid var(--input-border); color: var(--text-main); border-radius: 8px; font-family: 'Poppins', sans-serif; font-size: 12px; transition: all 0.2s ease; }
+input[type="text"], input[type="number"], input[type="date"], input[type="password"], input[type="tel"], select { width: 100%; padding: 10px 14px; background-color: var(--input-bg); border: 2px solid var(--input-border); color: var(--text-main); border-radius: 8px; font-family: 'Poppins', sans-serif; font-size: 12px; transition: all 0.2s ease; }
 input:focus, select:focus { outline: none; border-color: var(--input-focus); box-shadow: 0 0 0 3px rgba(255, 8, 68, 0.1); }
 input::placeholder { color: var(--text-sub); opacity: 0.6; }
 input:disabled, select:disabled { opacity: 0.4; cursor: not-allowed; border-color: transparent; }
@@ -210,4 +210,15 @@ body:not([data-theme="dark"]) label,
 body:not([data-theme="dark"]) .auth-box p,
 body:not([data-theme="dark"]) .settings-card p {
     color: #475569 !important;
+}
+/* Hides up/down arrows on all number inputs (Chrome, Safari, Edge) */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+/* Hides up/down arrows on all number inputs (Firefox) */
+input[type="number"] {
+    -moz-appearance: textfield;
 }

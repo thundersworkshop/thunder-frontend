@@ -487,10 +487,9 @@
                         <table id="audit-table">
                             <thead>
                                 <tr>
-                                    <th>Log Date</th>
+                                    <th>Log Time</th>
                                     <th>Status</th>
-                                    <th>Original Details</th>
-                                    <th>Recorded By</th>
+                                    <th>Record Details</th>
                                     <th>Action</th>
                                 </tr>
                             </thead>
@@ -541,13 +540,14 @@
         
         <!-- Edit Details -->
         <div class="form-box" style="flex: 1; min-width: 300px; margin-bottom: 0;">
-            <h4 style="margin-bottom: 15px; color: var(--text-main);">Update Details</h4>
-            <form id="update-profile-form">
-                <input type="text" id="update-fullname" placeholder="New Full Name" required style="margin-bottom: 10px;">
-                <input type="number" id="update-phone" placeholder="New Phone Number" required style="margin-bottom: 10px;">
-                <button type="submit" class="submit-btn" style="width: 100%;">Save Details</button>
-            </form>
-        </div>
+                <h4 style="margin-bottom: 15px; color: var(--text-main);">Update Details</h4>
+                <form id="update-profile-form">
+                    <!-- Changed to type="tel" to remove arrows, and removed "required" -->
+                    <input type="text" id="update-fullname" placeholder="New Full Name" style="margin-bottom: 10px;">
+                    <input type="tel" id="update-phone" placeholder="New Phone Number" style="margin-bottom: 10px;">
+                    <button type="submit" class="submit-btn" style="width: 100%;">Save Details</button>
+                </form>
+            </div>
 
         <!-- Change Password -->
         <div class="form-box" style="flex: 1; min-width: 300px; margin-bottom: 0;">
