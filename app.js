@@ -141,35 +141,45 @@ async function loadData() {
     }
 
     try {
-        const res = await fetch(`${API_URL}/transactions`, { headers: getAuthHeaders() });
-        if (!res.ok) throw new Error('Server offline or auth failed');
+        // 1. FAULT-TOLERANT FETCHING
+        // Instead of crashing the app if one fails, we safely fall back to empty arrays
+        
+        const txRes = await fetch(`${API_URL}/transactions`, { headers: getAuthHeaders() });
+        masterTransactions = txRes.ok ? await txRes.json() : [];
 
-        masterTransactions = await res.json();
         const auditRes = await fetch(`${API_URL}/audit`, { headers: getAuthHeaders() });
-        masterAuditLogs = await auditRes.json();
-        const catRes = await fetch(`${API_URL}/categories`, { headers: getAuthHeaders() });
-        const categories = await catRes.json();
-        const setRes = await fetch(`${API_URL}/settings`, { headers: getAuthHeaders() });
-        const settings = await setRes.json();
+        masterAuditLogs = auditRes.ok ? await auditRes.json() : [];
 
-        if (settings) {
-            document.getElementById('opening-cash').value = settings.openingCash || 0;
-            document.getElementById('opening-bank').value = settings.openingBank || 0;
-            if(settings.editorUsername) document.getElementById('set-editor-username').value = settings.editorUsername;
-            if(settings.editorPassword) document.getElementById('set-editor-pass').value = settings.editorPassword;
-            
-            // Check for persistent deletion timer
-            if (settings.deletionTimerStart) {
-                const elapsedSeconds = Math.floor((Date.now() - new Date(settings.deletionTimerStart).getTime()) / 1000);
-                timeLeft = 3600 - elapsedSeconds;
-                if (timeLeft > 0) {
-                    startTimerUI();
-                } else {
-                    executeDeepClean();
-                }
+        const catRes = await fetch(`${API_URL}/categories`, { headers: getAuthHeaders() });
+        const categories = catRes.ok ? await catRes.json() : [];
+
+        // 2. AUTO-HEALING SETTINGS
+        // If the server fails to load settings, silently default to 0 instead of bricking the app
+        let settings = { openingCash: 0, openingBank: 0 }; 
+        const setRes = await fetch(`${API_URL}/settings`, { headers: getAuthHeaders() });
+        if (setRes.ok) {
+            const fetchedSettings = await setRes.json();
+            if (fetchedSettings) settings = fetchedSettings;
+        }
+
+        // Apply Settings to UI safely
+        document.getElementById('opening-cash').value = settings.openingCash || 0;
+        document.getElementById('opening-bank').value = settings.openingBank || 0;
+        if(settings.editorUsername) document.getElementById('set-editor-username').value = settings.editorUsername;
+        if(settings.editorPassword) document.getElementById('set-editor-pass').value = settings.editorPassword;
+        
+        // Handle timers safely
+        if (settings.deletionTimerStart) {
+            const elapsedSeconds = Math.floor((Date.now() - new Date(settings.deletionTimerStart).getTime()) / 1000);
+            timeLeft = 3600 - elapsedSeconds;
+            if (timeLeft > 0) {
+                startTimerUI();
+            } else {
+                executeDeepClean();
             }
         }
 
+        // Render everything safely using the safe fallbacks
         calculateBalances(masterTransactions, settings);
         renderCategories(categories);
         renderDashboard();
@@ -178,14 +188,20 @@ async function loadData() {
             processAndRenderTables();
         }
 
-        if (statusEl) {
+        // Only show green if the main transaction API actually succeeded
+        if (txRes.ok && statusEl) {
             statusEl.innerHTML = '🟢 Connected';
             statusEl.style.color = '#10b981';
             statusEl.style.background = 'rgba(16, 185, 129, 0.1)';
+        } else if (statusEl) {
+            // Warn the user there is a sync issue, but let them keep viewing what loaded
+            statusEl.innerHTML = '🟠 Sync Issue';
+            statusEl.style.color = '#f97316';
+            statusEl.style.background = 'rgba(249, 115, 22, 0.1)';
         }
 
     } catch (error) {
-        console.error("Error connecting to Vault:", error);
+        console.error("Critical Vault Network Error:", error);
         if (statusEl) {
             statusEl.innerHTML = '🔴 Offline / Error';
             statusEl.style.color = '#ef4444';
