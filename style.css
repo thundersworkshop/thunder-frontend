@@ -232,3 +232,38 @@ input[type="number"] {
 [data-theme="dark"] tbody tr:hover td span {
     color: inherit; 
 }
+/* --- CUSTOM POPUP SYSTEM --- */
+#custom-toast {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    background: #1e293b;
+    color: #f8fafc;
+    padding: 14px 24px;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    z-index: 10000;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: translateY(100px) scale(0.9);
+    opacity: 0;
+    border-left: 5px solid #6366f1;
+    font-weight: 500;
+    font-size: 14px;
+    pointer-events: none;
+}
+
+#custom-toast.toast-visible {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+}
+
+#custom-toast.toast-error { border-left-color: #ef4444; }
+#custom-toast.toast-success { border-left-color: #10b981; }
+#custom-toast.toast-warning { border-left-color: #f59e0b; }
+
+[data-theme="dark"] #custom-toast {
+    background: #0f172a;
+    border-right: 1px solid rgba(255,255,255,0.1);
+    border-top: 1px solid rgba(255,255,255,0.1);
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}

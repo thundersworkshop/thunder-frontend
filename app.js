@@ -16,6 +16,46 @@ const auth = getAuth(app);
 
 const API_URL = 'https://thunder-backend-esf1.onrender.com/api';
 
+// ==========================================
+// CUSTOM UI POPUP ENGINE
+// ==========================================
+window.customAlert = function(message, type = 'info') {
+    const toast = document.getElementById('custom-toast');
+    const msgEl = document.getElementById('toast-message');
+    if(!toast || !msgEl) return console.log(message); 
+    
+    toast.className = `toast-visible toast-${type}`;
+    msgEl.innerHTML = message;
+    
+    setTimeout(() => { toast.className = 'toast-hidden'; }, 3500);
+};
+
+window.customConfirm = function(message) {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('custom-confirm-modal');
+        const msgEl = document.getElementById('confirm-message');
+        const okBtn = document.getElementById('confirm-ok-btn');
+        const cancelBtn = document.getElementById('confirm-cancel-btn');
+        
+        if(!modal || !msgEl) return resolve(confirm(message)); // Fallback
+        
+        msgEl.innerHTML = message;
+        modal.style.display = 'flex';
+        
+        const handleOk = () => { cleanup(); resolve(true); };
+        const handleCancel = () => { cleanup(); resolve(false); };
+        
+        const cleanup = () => {
+            modal.style.display = 'none';
+            okBtn.removeEventListener('click', handleOk);
+            cancelBtn.removeEventListener('click', handleCancel);
+        };
+        
+        okBtn.addEventListener('click', handleOk);
+        cancelBtn.addEventListener('click', handleCancel);
+    });
+};
+
 let isAdminUnlocked = false; 
 let currentUserToken = null; 
 
@@ -141,9 +181,6 @@ async function loadData() {
     }
 
     try {
-        // 1. FAULT-TOLERANT FETCHING
-        // Instead of crashing the app if one fails, we safely fall back to empty arrays
-        
         const txRes = await fetch(`${API_URL}/transactions`, { headers: getAuthHeaders() });
         masterTransactions = txRes.ok ? await txRes.json() : [];
 
@@ -153,8 +190,6 @@ async function loadData() {
         const catRes = await fetch(`${API_URL}/categories`, { headers: getAuthHeaders() });
         const categories = catRes.ok ? await catRes.json() : [];
 
-        // 2. AUTO-HEALING SETTINGS
-        // If the server fails to load settings, silently default to 0 instead of bricking the app
         let settings = { openingCash: 0, openingBank: 0 }; 
         const setRes = await fetch(`${API_URL}/settings`, { headers: getAuthHeaders() });
         if (setRes.ok) {
@@ -162,13 +197,11 @@ async function loadData() {
             if (fetchedSettings) settings = fetchedSettings;
         }
 
-        // Apply Settings to UI safely
         document.getElementById('opening-cash').value = settings.openingCash || 0;
         document.getElementById('opening-bank').value = settings.openingBank || 0;
         if(settings.editorUsername) document.getElementById('set-editor-username').value = settings.editorUsername;
         if(settings.editorPassword) document.getElementById('set-editor-pass').value = settings.editorPassword;
         
-        // Handle timers safely
         if (settings.deletionTimerStart) {
             const elapsedSeconds = Math.floor((Date.now() - new Date(settings.deletionTimerStart).getTime()) / 1000);
             timeLeft = 3600 - elapsedSeconds;
@@ -179,7 +212,6 @@ async function loadData() {
             }
         }
 
-        // Render everything safely using the safe fallbacks
         calculateBalances(masterTransactions, settings);
         renderCategories(categories);
         renderDashboard();
@@ -188,13 +220,11 @@ async function loadData() {
             processAndRenderTables();
         }
 
-        // Only show green if the main transaction API actually succeeded
         if (txRes.ok && statusEl) {
             statusEl.innerHTML = '🟢 Connected';
             statusEl.style.color = '#10b981';
             statusEl.style.background = 'rgba(16, 185, 129, 0.1)';
         } else if (statusEl) {
-            // Warn the user there is a sync issue, but let them keep viewing what loaded
             statusEl.innerHTML = '🟠 Sync Issue';
             statusEl.style.color = '#f97316';
             statusEl.style.background = 'rgba(249, 115, 22, 0.1)';
@@ -227,12 +257,9 @@ function renderDashboard() {
     let monthExpenses = 0;
     let catTotals = {};
     masterTransactions.forEach(t => {
-        let monthKey = t.date.substring(0, 7);
-        if (flowData[monthKey]) {
-            let amt = Number(t.amount);
-            if (t.type === 'Receipt') flowData[monthKey].in += amt;
-            // ADDED: Include generic outs in the cashflow bar chart
-            if (t.type === 'Expense' || t.type === 'Payment') flowData[monthKey].out += amt;
+        if (t.type === 'Expense' && t.date.startsWith(currentMonthStr)) {
+            monthExpenses += Number(t.amount);
+            catTotals[t.category] = (catTotals[t.category] || 0) + Number(t.amount);
         }
     });
     
@@ -266,7 +293,7 @@ function renderDashboard() {
         if (flowData[monthKey]) {
             let amt = Number(t.amount);
             if (t.type === 'Receipt') flowData[monthKey].in += amt;
-            if (t.type === 'Expense') flowData[monthKey].out += amt;
+            if (t.type === 'Expense' || t.type === 'Payment') flowData[monthKey].out += amt; 
         }
     });
 
@@ -345,7 +372,6 @@ function processAndRenderTables() {
         if (currentSort === 'amount-desc') return (b.amount || 0) - (a.amount || 0);
         if (currentSort === 'amount-asc') return (a.amount || 0) - (b.amount || 0);
         
-        // Safe string sorting for older data
         const partA = a.particulars || '';
         const partB = b.particulars || '';
         if (currentSort === 'particulars-asc') return partA.localeCompare(partB);
@@ -380,7 +406,7 @@ window.exportTabToPDF = function() {
     if (activeTabEl) activeTab = activeTabEl.id;
 
     if (['dashboard-section', 'entry-section', 'settings-section'].includes(activeTab)) {
-        return alert("Please navigate to a Ledger, Statement, or Search tab to export data.");
+        return customAlert("Please navigate to a Ledger, Statement, or Search tab to export data.", "warning");
     }
 
     let tabTitle = "Ledger Export";
@@ -443,39 +469,39 @@ window.exportTabToPDF = function() {
         foot = [['', '', '', 'TOTAL SEARCH AMOUNT:', `Rs. ${totalAmt.toLocaleString('en-IN')}`]];
     }
     else if (activeTab === 'audit-section') {
-        // Reduced to 3 columns to give the diff text more room to breathe
         head = [['Log Time', 'Action', 'Changed Fields']];
         body = masterAuditLogs.map(log => {
-            
-            const isRestored = log.action.includes('RESTORED');
-            const baseAction = log.action.replace(' (RESTORED)', '');
+            const isRestored = log.action === 'RESTORED';
+            const originalAction = log.newData ? 'MODIFIED' : 'DELETED';
+            const actionStr = isRestored ? 'RESTORED' : originalAction;
 
-            let timeStr = log.dateChanged;
-            if (!timeStr.includes('Z') && !timeStr.includes('T')) timeStr += " UTC";
-            let localTime = new Date(timeStr).toLocaleString();
-            if (localTime === 'Invalid Date') localTime = log.dateChanged;
+            let timeStr = log.dateChanged || '';
+            let localTime = 'Old Record';
+            if (timeStr) {
+                if (!timeStr.includes('Z') && !timeStr.includes('T')) timeStr += " UTC";
+                localTime = new Date(timeStr).toLocaleString();
+                if (localTime === 'Invalid Date') localTime = log.dateChanged;
+            }
             
             const old = log.originalData || {};
             const newD = log.newData || {};
             let changeStr = '-';
             
-            // SMART DIFF LOGIC FOR PDF
-            if (baseAction === 'MODIFIED' && log.newData) {
+            if (originalAction === 'MODIFIED' && log.newData) {
                 let changes = [];
                 if (old.date !== newD.date) changes.push(`Date: ${old.date} -> ${newD.date}`);
                 if (old.type !== newD.type) changes.push(`Type: ${old.type} -> ${newD.type}`);
                 if (old.particulars !== newD.particulars) changes.push(`Particulars: ${old.particulars} -> ${newD.particulars}`);
-                if (Number(old.amount) !== Number(newD.amount)) changes.push(`Amt: Rs.${Number(old.amount).toLocaleString('en-IN')} -> Rs.${Number(newD.amount).toLocaleString('en-IN')}`);
+                if (Number(old.amount || 0) !== Number(newD.amount || 0)) changes.push(`Amt: Rs.${Number(old.amount || 0).toLocaleString('en-IN')} -> Rs.${Number(newD.amount || 0).toLocaleString('en-IN')}`);
                 if ((old.category || '-') !== (newD.category || '-')) changes.push(`Cat: ${old.category || '-'} -> ${newD.category || '-'}`);
                 if (old.account !== newD.account) changes.push(`Acc: ${old.account} -> ${newD.account}`);
-                if ((old.notes || '-') !== (newD.notes || '-')) changes.push(`Note: ${old.notes || '-'} -> ${newD.notes || '-'}`);
                 
                 changeStr = changes.length > 0 ? changes.join(' | ') : 'No specific fields changed.';
-            } else if (baseAction === 'DELETED') {
-                changeStr = `DELETED: ${old.date} | ${old.particulars} | Rs.${Number(old.amount).toLocaleString('en-IN')}`;
+            } else if (originalAction === 'DELETED') {
+                changeStr = `DELETED: ${old.date} | ${old.particulars} | Rs.${Number(old.amount || 0).toLocaleString('en-IN')}`;
             }
             
-            return [localTime, log.action, changeStr];
+            return [localTime, actionStr, changeStr];
         });
     }
 
@@ -497,7 +523,7 @@ window.generateMasterPDF = function() {
     const start = document.getElementById('master-export-start').value;
     const end = document.getElementById('master-export-end').value;
 
-    if (!start || !end) return alert("Please select both a Start Date and End Date for the Master Export.");
+    if (!start || !end) return customAlert("Please select both a Start Date and End Date.", "warning");
 
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF('landscape');
@@ -585,7 +611,7 @@ function renderTables(transactions, auditLogs, activeTab) {
             document.getElementById('expense-table-body').innerHTML += `<tr><td data-label="Date">${t.date}</td><td data-label="Particulars">${t.particulars}</td><td data-label="Category">${t.category || '-'}</td><td data-label="Account">${t.account}</td><td data-label="Amount">₹${t.amount}</td><td data-label="Note">${displayNote}</td><td data-label="Action">${actionCell}</td></tr>`;
         }
         
-        if (activeTab === 'cash-section' && (t.account === 'Cash' || t.type === 'Contra')) {
+        if (activeTab === 'cash-section' && (t.account === 'Cash' || t.type === 'Contra' || t.type === 'Payment')) {
             let isCashIncrease = false;
             if (t.type === 'Receipt' && t.account === 'Cash') isCashIncrease = true;
             if (t.type === 'Contra' && t.account === 'Bank Account') isCashIncrease = true; 
@@ -598,7 +624,7 @@ function renderTables(transactions, auditLogs, activeTab) {
             document.getElementById('cash-table-body').innerHTML += `<tr><td data-label="Date">${t.date}</td><td data-label="Particulars">${t.particulars}</td><td data-label="Type">${t.type}</td><td data-label="Amount">₹${t.amount} ${inOutBadge}</td><td data-label="Note">${displayNote}</td><td data-label="Action">${actionCell}</td></tr>`;
         }
         
-        if (activeTab === 'bank-section' && (t.account === 'Bank Account' || t.type === 'Contra')) {
+        if (activeTab === 'bank-section' && (t.account === 'Bank Account' || t.type === 'Contra' || t.type === 'Payment')) {
             let isBankIncrease = false;
             if (t.type === 'Receipt' && t.account === 'Bank Account') isBankIncrease = true;
             if (t.type === 'Contra' && t.account === 'Cash') isBankIncrease = true; 
@@ -634,23 +660,25 @@ function renderTables(transactions, auditLogs, activeTab) {
             const old = log.originalData || {};
             const newD = log.newData || {}; 
             
-            // If it says RESTORED, we check if newData exists to know if it was originally modified or deleted
+            const actionStr = log.action || 'UNKNOWN';
             const originalAction = log.newData ? 'MODIFIED' : 'DELETED';
-            const isRestored = log.action === 'RESTORED';
+            const isRestored = actionStr === 'RESTORED';
 
-            let statusBadge = `<strong style="${isRestored ? 'color: #6366f1;' : ''}">${log.action}</strong>`;
+            let statusBadge = `<strong style="${isRestored ? 'color: #6366f1;' : ''}">${actionStr}</strong>`;
             let restoreBtn = isRestored 
                 ? `<button class="secondary-btn" disabled style="opacity: 0.5; cursor: not-allowed;">Restored</button>`
                 : `<button class="edit-btn" onclick="restoreEntry('${log._id}')">Restore</button>`;
 
-            let timeStr = log.dateChanged;
-            if (!timeStr.includes('Z') && !timeStr.includes('T')) timeStr += " UTC";
-            let localTime = new Date(timeStr).toLocaleString();
-            if (localTime === 'Invalid Date') localTime = log.dateChanged; 
+            let timeStr = log.dateChanged || '';
+            let localTime = 'Old Test Record';
+            if (timeStr) {
+                if (!timeStr.includes('Z') && !timeStr.includes('T')) timeStr += " UTC";
+                localTime = new Date(timeStr).toLocaleString();
+                if (localTime === 'Invalid Date') localTime = log.dateChanged; 
+            }
             
             let details = '';
             
-            // SMART DIFF LAYOUT FOR MODIFIED
             if (originalAction === 'MODIFIED') {
                 let changes = [];
                 const diff = (label, o, n) => `
@@ -661,18 +689,17 @@ function renderTables(transactions, auditLogs, activeTab) {
                         <span style="background: rgba(16, 185, 129, 0.1); color: #10b981; padding: 2px 6px; border-radius: 4px; font-weight: 600;">${n}</span>
                     </div>`;
                 
-                if (old.date !== newD.date) changes.push(diff('Date', old.date, newD.date));
-                if (old.type !== newD.type) changes.push(diff('Type', old.type, newD.type));
-                if (old.particulars !== newD.particulars) changes.push(diff('Particulars', old.particulars, newD.particulars));
-                if (Number(old.amount) !== Number(newD.amount)) changes.push(diff('Amount', `₹${Number(old.amount).toLocaleString('en-IN')}`, `₹${Number(newD.amount).toLocaleString('en-IN')}`));
+                if (old.date !== newD.date) changes.push(diff('Date', old.date || '-', newD.date || '-'));
+                if (old.type !== newD.type) changes.push(diff('Type', old.type || '-', newD.type || '-'));
+                if (old.particulars !== newD.particulars) changes.push(diff('Particulars', old.particulars || '-', newD.particulars || '-'));
+                if (Number(old.amount || 0) !== Number(newD.amount || 0)) changes.push(diff('Amount', `₹${Number(old.amount || 0).toLocaleString('en-IN')}`, `₹${Number(newD.amount || 0).toLocaleString('en-IN')}`));
                 if ((old.category || '-') !== (newD.category || '-')) changes.push(diff('Category', old.category || '-', newD.category || '-'));
-                if (old.account !== newD.account) changes.push(diff('Account', old.account, newD.account));
+                if (old.account !== newD.account) changes.push(diff('Account', old.account || '-', newD.account || '-'));
 
                 details = changes.length > 0 
                     ? `<div style="border-left: 2px solid var(--border-color); padding-left: 10px; margin-top: 4px;">${changes.join('')}</div>` 
                     : `<span style="color: #64748b; font-style: italic;">No specific fields changed.</span>`;
             } 
-            // BADGE LAYOUT FOR DELETED
             else if (originalAction === 'DELETED') {
                 let delFields = [];
                 const delF = (label, val) => `
@@ -681,10 +708,10 @@ function renderTables(transactions, auditLogs, activeTab) {
                         <span style="background: rgba(239, 68, 68, 0.1); color: #ef4444; padding: 2px 6px; border-radius: 4px;">${val}</span>
                     </div>`;
                 
-                delFields.push(delF('Date', old.date));
-                delFields.push(delF('Particulars', old.particulars));
-                delFields.push(delF('Amount', `₹${Number(old.amount).toLocaleString('en-IN')}`));
-                delFields.push(delF('Account', old.account));
+                delFields.push(delF('Date', old.date || '-'));
+                delFields.push(delF('Particulars', old.particulars || '-'));
+                delFields.push(delF('Amount', `₹${Number(old.amount || 0).toLocaleString('en-IN')}`));
+                delFields.push(delF('Account', old.account || '-'));
                 
                 details = `<div style="border-left: 2px solid #ef4444; padding-left: 10px; margin-top: 4px;">${delFields.join('')}</div>`;
             }
@@ -750,45 +777,10 @@ window.clearUniversalSearch = function() {
     runUniversalSearch();
 }
 
-function calculateBalances(transactions, settings) {
-    let currentCash = settings ? Number(settings.openingCash) || 0 : 0;
-    let currentBank = settings ? Number(settings.openingBank) || 0 : 0;
-    transactions.forEach(t => {
-        const amt = Number(t.amount) || 0;
-        if (t.type === 'Receipt') { 
-            if (t.account === 'Cash') currentCash += amt; 
-            if (t.account === 'Bank Account') currentBank += amt; 
-        } 
-        // ADDED: Payment deducts money just like an Expense
-        else if (t.type === 'Expense' || t.type === 'Payment') {
-            if (t.account === 'Cash') currentCash -= amt; 
-            if (t.account === 'Bank Account') currentBank -= amt; 
-        } 
-        else if (t.type === 'Contra') { 
-            if (t.account === 'Cash') { currentCash -= amt; currentBank += amt; } 
-            else if (t.account === 'Bank Account') { currentBank -= amt; currentCash += amt; } 
-        }
-    });
-    document.getElementById('live-cash').innerText = currentCash.toLocaleString('en-IN');
-    document.getElementById('live-bank').innerText = currentBank.toLocaleString('en-IN');
-}
-
-function renderCategories(categories) {
-    const categoryDropdown = document.getElementById('category');
-    const categoryTable = document.getElementById('category-table-body');
-    categoryDropdown.innerHTML = '<option value="">Select a Category...</option>';
-    categoryTable.innerHTML = '';
-    categories.forEach(cat => {
-        categoryDropdown.innerHTML += `<option value="${cat.name}">${cat.name}</option>`;
-        const delBtn = `<button class="del-btn" onclick="deleteCategory('${cat._id}')">Delete</button>`;
-        categoryTable.innerHTML += `<tr><td data-label="Category">${cat.name}</td><td data-label="Action">${delBtn}</td></tr>`;
-    });
-}
-
 document.getElementById('entry-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const localDate = enforceDateRules();
-    if (document.getElementById('date').value > localDate) return alert("Future/post-dated transactions are not allowed!");
+    if (document.getElementById('date').value > localDate) return customAlert("Future/post-dated transactions are not allowed!", "error");
 
     let recordedByName = 'System';
     if (auth.currentUser && auth.currentUser.displayName) {
@@ -805,14 +797,22 @@ document.getElementById('entry-form').addEventListener('submit', async (e) => {
         notes: document.getElementById('notes').value,
         recordedBy: recordedByName
     };
-    await fetch(`${API_URL}/transactions`, { method: 'POST', headers: getAuthHeaders(true), body: JSON.stringify(newEntry) });
-    document.getElementById('entry-form').reset();
     
-    const catSelect = document.getElementById('category');
-    catSelect.disabled = false;
-    catSelect.required = true;
-    enforceDateRules(); 
-    loadData();
+    customAlert("Saving transaction...", "info");
+    
+    try {
+        await fetch(`${API_URL}/transactions`, { method: 'POST', headers: getAuthHeaders(true), body: JSON.stringify(newEntry) });
+        document.getElementById('entry-form').reset();
+        
+        const catSelect = document.getElementById('category');
+        catSelect.disabled = false;
+        catSelect.required = true;
+        enforceDateRules(); 
+        await loadData();
+        customAlert("Transaction added successfully!", "success");
+    } catch(e) {
+        customAlert("Failed to save transaction.", "error");
+    }
 });
 
 window.openEditModal = function(id, date, type, particulars, amount, category, account, notes, recordedBy) {
@@ -827,8 +827,7 @@ window.openEditModal = function(id, date, type, particulars, amount, category, a
     
     const catDropdown = document.getElementById('edit-category');
     catDropdown.innerHTML = document.getElementById('category').innerHTML;
-    // ADDED: Check for Payment
-    if (type === 'Receipt' || type === 'Contra' || type === 'Payment') {
+    if (type === 'Receipt' || type === 'Contra' || type === 'Payment') { 
         catDropdown.disabled = true; catDropdown.value = ''; 
     } else { 
         catDropdown.disabled = false; catDropdown.value = category; 
@@ -848,11 +847,10 @@ window.closeEditModal = function() {
 document.getElementById('edit-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const localDate = enforceDateRules();
-    if (document.getElementById('edit-date').value > localDate) return alert("Future/post-dated transactions are not allowed!");
+    if (document.getElementById('edit-date').value > localDate) return customAlert("Future/post-dated transactions are not allowed!", "error");
 
     const id = document.getElementById('edit-id').value;
     
-    // 1. Grab all the new values from the form
     const newDate = document.getElementById('edit-date').value;
     const newType = document.getElementById('edit-type').value;
     const newParticulars = document.getElementById('edit-particulars').value.trim();
@@ -861,21 +859,13 @@ document.getElementById('edit-form').addEventListener('submit', async (e) => {
     const newAccount = document.getElementById('edit-account').value;
     const newNotes = document.getElementById('edit-notes').value.trim();
 
-    // 2. SMART DIFF VALIDATOR: Block submission if nothing changed
     const oldTx = masterTransactions.find(t => t._id === id);
     if (oldTx) {
         const oldNotes = oldTx.notes || '';
         const oldCategory = oldTx.category || '';
         
-        if (oldTx.date === newDate &&
-            oldTx.type === newType &&
-            oldTx.particulars === newParticulars &&
-            Number(oldTx.amount) === newAmount &&
-            oldCategory === newCategory &&
-            oldTx.account === newAccount &&
-            oldNotes === newNotes) {
-            
-            return alert("No changes detected! Please modify at least one field to save, or click 'Cancel' to close.");
+        if (oldTx.date === newDate && oldTx.type === newType && oldTx.particulars === newParticulars && Number(oldTx.amount) === newAmount && oldCategory === newCategory && oldTx.account === newAccount && oldNotes === newNotes) {
+            return customAlert("No changes detected. Modify at least one field to save.", "warning");
         }
     }
 
@@ -898,6 +888,7 @@ document.getElementById('edit-form').addEventListener('submit', async (e) => {
     const editorUsername = document.getElementById('auth-editor-username').value.trim();
     const editorPassword = document.getElementById('auth-editor-pass').value.trim();
     
+    customAlert("Updating record...", "info");
     const res = await fetch(`${API_URL}/transactions/${id}`, { 
         method: 'PUT', 
         headers: getAuthHeaders(true), 
@@ -906,32 +897,45 @@ document.getElementById('edit-form').addEventListener('submit', async (e) => {
     
     const data = await res.json();
     if (res.ok) { 
-        alert("Transaction updated successfully!"); 
+        customAlert("Transaction updated successfully!", "success"); 
         closeEditModal(); 
         loadData(); 
     } else { 
-        alert("Error: " + (data.error || "Authentication failed")); 
+        customAlert("Error: " + (data.error || "Authentication failed"), "error"); 
     }
 });
 
+document.getElementById('editor-creds-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const editorUsername = document.getElementById('set-editor-username').value.trim();
+    const editorPassword = document.getElementById('set-editor-pass').value.trim();
+    await fetch(`${API_URL}/settings`, { method: 'POST', headers: getAuthHeaders(true), body: JSON.stringify({ editorUsername, editorPassword }) });
+    customAlert("Editor Credentials Saved Successfully!", "success");
+});
+
 window.deleteEntry = async function(id) {
-    if (!isAdminUnlocked) return alert("Security Block: Please log in via the Settings tab to delete records.");
-    if (confirm("Move to Audit Trail?")) { await fetch(`${API_URL}/transactions/${id}`, { method: 'DELETE', headers: { 'admin-access': 'true', 'Authorization': `Bearer ${currentUserToken}` } }); loadData(); }
+    if (!isAdminUnlocked) return customAlert("Security Block: Please log in via the Settings tab to delete records.", "error");
+    if (await customConfirm("Are you sure you want to move this record to the Audit Trail?")) { 
+        customAlert("Deleting...", "info");
+        await fetch(`${API_URL}/transactions/${id}`, { method: 'DELETE', headers: { 'admin-access': 'true', 'Authorization': `Bearer ${currentUserToken}` } }); 
+        loadData();
+        customAlert("Moved to Audit Trail.", "success");
+    }
 }
 
 window.restoreEntry = async function(logId) {
-    if (!confirm("Restore this record back to its exact original state?")) return;
+    if (!(await customConfirm("Restore this record back to its exact original state?"))) return;
 
-    // 1. Find the exact log the user clicked
     const log = masterAuditLogs.find(l => l._id === logId);
-    if (!log) return alert("Error: Log data not found.");
+    if (!log) return customAlert("Error: Log data not found.", "error");
 
     const old = log.originalData;
     const txId = log.transactionId || old._id; 
     
-    // 2. Grab Editor Credentials from the Settings tab
     const editorUsername = document.getElementById('set-editor-username').value;
     const editorPassword = document.getElementById('set-editor-pass').value;
+
+    customAlert("Restoring...", "info");
 
     try {
         const baseAction = log.action.replace(' (RESTORED)', '');
@@ -975,18 +979,16 @@ window.restoreEntry = async function(logId) {
             if(!res.ok) throw new Error(data.error || "Server rejected the recreation request.");
         }
 
-        alert("Record successfully restored!");
-        
-        // Force instant UI update to strictly "RESTORED"
         try {
             await fetch(`${API_URL}/audit-status/${logId}`, { method: 'PUT', headers: getAuthHeaders() });
             log.action = 'RESTORED'; 
         } catch(e) { console.error(e); }
         
-        loadData(); // Refresh all tables instantly
+        loadData(); 
+        customAlert("Record successfully restored!", "success");
 
     } catch (error) {
-        alert("Restore failed: " + error.message);
+        customAlert("Restore failed: " + error.message, "error");
     }
 };
 
@@ -996,10 +998,15 @@ document.getElementById('category-form').addEventListener('submit', async (e) =>
     await fetch(`${API_URL}/categories`, { method: 'POST', headers: getAuthHeaders(true), body: JSON.stringify({ name: catName }) });
     document.getElementById('category-form').reset();
     loadData();
+    customAlert("Category added!", "success");
 });
 
 window.deleteCategory = async function(id) {
-    if (confirm("Delete this category?")) { await fetch(`${API_URL}/categories/${id}`, { method: 'DELETE', headers: getAuthHeaders() }); loadData(); }
+    if (await customConfirm("Are you sure you want to delete this category?")) { 
+        await fetch(`${API_URL}/categories/${id}`, { method: 'DELETE', headers: getAuthHeaders() }); 
+        loadData(); 
+        customAlert("Category deleted.", "success");
+    }
 }
 
 document.getElementById('balance-form').addEventListener('submit', async (e) => {
@@ -1007,13 +1014,13 @@ document.getElementById('balance-form').addEventListener('submit', async (e) => 
     const openingCash = Number(document.getElementById('opening-cash').value);
     const openingBank = Number(document.getElementById('opening-bank').value);
     await fetch(`${API_URL}/settings`, { method: 'POST', headers: getAuthHeaders(true), body: JSON.stringify({ openingCash, openingBank, isAdminOverride: isAdminUnlocked }) });
-    alert("Opening Balances Updated!"); loadData(); 
+    loadData(); 
+    customAlert("Opening Balances Updated!", "success");
 });
 
 document.getElementById('type').addEventListener('change', function(e) {
     const catSelect = document.getElementById('category');
-    // ADDED: Disable category for Payment
-    if (e.target.value === 'Receipt' || e.target.value === 'Contra' || e.target.value === 'Payment') {
+    if (e.target.value === 'Receipt' || e.target.value === 'Contra' || e.target.value === 'Payment') { 
         catSelect.disabled = true; catSelect.required = false; catSelect.value = ''; 
     } else { 
         catSelect.disabled = false; catSelect.required = true; 
@@ -1023,8 +1030,7 @@ document.getElementById('type').addEventListener('change', function(e) {
 if(document.getElementById('edit-type')) {
     document.getElementById('edit-type').addEventListener('change', function(e) {
         const editCatSelect = document.getElementById('edit-category');
-        // ADDED: Disable category for Payment
-        if (e.target.value === 'Receipt' || e.target.value === 'Contra' || e.target.value === 'Payment') {
+        if (e.target.value === 'Receipt' || e.target.value === 'Contra' || e.target.value === 'Payment') { 
             editCatSelect.disabled = true; editCatSelect.value = ''; 
         } else { 
             editCatSelect.disabled = false; 
@@ -1058,7 +1064,6 @@ onAuthStateChanged(auth, async (user) => {
         document.getElementById('profile-email').innerText = user.email || 'N/A';
         
         await loadData();
-        renderDashboard();
     } else {
         currentUserToken = null;
         document.getElementById('global-login-wall').style.display = 'flex';
@@ -1098,7 +1103,7 @@ if (formSignup) {
             await sendEmailVerification(userCredential.user);
             await signOut(auth);
             
-            alert("Account created! 📩 Please check your inbox and click the verification link before logging in.");
+            customAlert("Account created! 📩 Please verify your email.", "success");
             document.getElementById('form-signup').reset();
             toggleAuth('login');
         } catch (error) {
@@ -1134,13 +1139,14 @@ if (formLogin) {
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
             if (!userCredential.user.emailVerified) {
                 await signOut(auth);
-                alert("🚨 Access Denied. You must verify your email address before logging in.");
+                customAlert("🚨 Access Denied. Verify your email first.", "error");
                 btn.innerText = "Access Vault";
                 btn.disabled = false;
                 return;
             }
             btn.innerText = "Access Vault";
             btn.disabled = false;
+            customAlert("Welcome back!", "success");
         } catch (error) {
             let cleanMessage = "Incorrect email or password.";
             if (error.code === 'auth/too-many-requests') cleanMessage = "Too many failed attempts. Try again later.";
@@ -1179,6 +1185,7 @@ if (settingsAuthForm) {
             document.getElementById('audit-tab-btn').style.display = 'inline-block';
             errorEl.style.display = 'none';
             settingsAuthForm.reset();
+            customAlert("Admin settings unlocked.", "success");
         } catch (error) {
             errorEl.innerText = "Access Denied: Incorrect Email or Password.";
             errorEl.style.display = 'block';
@@ -1194,6 +1201,7 @@ window.logoutAdmin = function() {
     document.getElementById('audit-tab-btn').style.display = 'none';
     document.getElementById('admin-login-box').style.display = 'block';
     
+    customAlert("Admin settings locked.", "info");
     const settingsTabBtn = document.querySelector('button[onclick*="settings-section"]');
     if(settingsTabBtn) openTab({ currentTarget: settingsTabBtn }, 'settings-section');
 };
@@ -1234,7 +1242,7 @@ async function executeDeepClean() {
             body: JSON.stringify({ userId: auth.currentUser.uid })
         });
         if(res.ok) {
-            alert('Your data has been completely and permanently deleted.');
+            customAlert('Your data has been completely wiped.', "success");
             auth.signOut().then(() => location.reload());
         }
     } catch (err) {
@@ -1245,7 +1253,7 @@ async function executeDeepClean() {
 document.getElementById('factory-reset-btn').addEventListener('click', async () => {
     const confirmText = document.getElementById('reset-confirm-input').value;
     if (confirmText !== 'CLEAR-BALANCES') {
-        return alert('Please type CLEAR-BALANCES exactly as shown to confirm.');
+        return customAlert('Please type CLEAR-BALANCES exactly as shown to confirm.', "warning");
     }
     
     try {
@@ -1255,7 +1263,6 @@ document.getElementById('factory-reset-btn').addEventListener('click', async () 
             body: JSON.stringify({ userId: auth.currentUser.uid })
         });
         if(res.ok) {
-            alert('Your opening balances have been successfully reset.');
             document.getElementById('reset-confirm-input').value = '';
             location.reload(); 
         }
@@ -1267,13 +1274,14 @@ document.getElementById('factory-reset-btn').addEventListener('click', async () 
 document.getElementById('initiate-clean-btn').addEventListener('click', async () => {
     const confirmText = document.getElementById('deep-clean-confirm-input').value;
     if (confirmText !== 'DELETE-MY-DATA') {
-        return alert('Please type DELETE-MY-DATA exactly as shown to confirm.');
+        return customAlert('Please type DELETE-MY-DATA exactly as shown to confirm.', "warning");
     }
     
     await fetch(`${API_URL}/schedule-clean`, { method: 'POST', headers: getAuthHeaders() });
     
     timeLeft = 3600;
     startTimerUI();
+    customAlert("Data wipe scheduled.", "info");
 });
 
 document.getElementById('cancel-clean-btn').addEventListener('click', async () => {
@@ -1285,14 +1293,13 @@ document.getElementById('cancel-clean-btn').addEventListener('click', async () =
     document.getElementById('deep-clean-confirm-input').disabled = false;
     document.getElementById('deep-clean-confirm-input').value = '';
     document.getElementById('timer-container').style.display = 'none';
-    alert('Deep clean safely cancelled.');
+    customAlert('Deep clean safely cancelled.', "success");
 });
 
 // ==========================================
 // NEW PROFILE & SECURITY LOGIC
 // ==========================================
 
-// 1. Update Profile Details (Name & Phone Optional)
 document.getElementById('update-profile-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = e.target.querySelector('button');
@@ -1301,7 +1308,7 @@ document.getElementById('update-profile-form').addEventListener('submit', async 
     const newPhoneInput = document.getElementById('update-phone').value.trim();
     
     if (!newNameInput && !newPhoneInput) {
-        return alert("Please enter a new name or phone number to update.");
+        return customAlert("Please enter a new name or phone number to update.", "warning");
     }
 
     btn.innerText = "Saving...";
@@ -1322,10 +1329,9 @@ document.getElementById('update-profile-form').addEventListener('submit', async 
     
     try {
         await updateProfile(auth.currentUser, { displayName: `${currentUsername} | ${finalName} | ${finalPhone}` });
-        alert("Profile details updated successfully!");
         location.reload();
     } catch (error) {
-        alert("Failed to update profile: " + error.message);
+        customAlert("Failed to update profile: " + error.message, "error");
         btn.innerText = "Save Details";
     }
 });
@@ -1337,7 +1343,7 @@ document.getElementById('change-password-form').addEventListener('submit', async
     const confirmPass = document.getElementById('confirm-new-password').value;
     const btn = e.target.querySelector('button');
 
-    if (newPass !== confirmPass) return alert("New passwords do not match!");
+    if (newPass !== confirmPass) return customAlert("New passwords do not match!", "error");
     
     btn.innerText = "Verifying...";
     try {
@@ -1345,10 +1351,10 @@ document.getElementById('change-password-form').addEventListener('submit', async
         await reauthenticateWithCredential(auth.currentUser, credential);
         
         await updatePassword(auth.currentUser, newPass);
-        alert("Password updated securely!");
+        customAlert("Password updated securely!", "success");
         e.target.reset();
     } catch (error) {
-        alert("Error: " + error.message);
+        customAlert("Error: " + error.message, "error");
     } finally {
         btn.innerText = "Update Password";
     }
