@@ -151,7 +151,10 @@ function updateSubFilterUI(tabId, viewName) {
         container.style.display = 'block';
     } 
     else if (viewName === 'All Month') {
-        let months = [...new Set(masterTransactions.map(t => t.date.substring(0, 7)))].sort().reverse();
+        // SAFEGUARD: Filter out bad data before using substring
+        let validDates = masterTransactions.filter(t => t.date).map(t => t.date.substring(0, 7));
+        let months = [...new Set(validDates)].sort().reverse();
+        
         let monthOptions = `<option value="">Select Month...</option>`;
         months.forEach(m => {
             let dateObj = new Date(m + "-01");
@@ -257,6 +260,7 @@ function renderDashboard() {
     let monthExpenses = 0;
     let catTotals = {};
     masterTransactions.forEach(t => {
+        if (!t.date) return; // SAFEGUARD: Skip corrupt data
         if (t.type === 'Expense' && t.date.startsWith(currentMonthStr)) {
             monthExpenses += Number(t.amount);
             catTotals[t.category] = (catTotals[t.category] || 0) + Number(t.amount);
@@ -289,6 +293,7 @@ function renderDashboard() {
     }
 
     masterTransactions.forEach(t => {
+        if (!t.date) return; // SAFEGUARD: Skip corrupt data
         let monthKey = t.date.substring(0, 7);
         if (flowData[monthKey]) {
             let amt = Number(t.amount);
@@ -337,9 +342,12 @@ function processAndRenderTables() {
     const startDay = parseInt(localStorage.getItem('weekStartDay') || '1');
 
     let filteredTx = masterTransactions.filter(t => {
+        if (!t.date) return false; // SAFEGUARD: Instantly hide corrupt records
+
         if (activeTab === 'expense-section' && t.type !== 'Expense') return false;
-        if (activeTab === 'cash-section' && !(t.account === 'Cash' || t.type === 'Contra')) return false;
-        if (activeTab === 'bank-section' && !(t.account === 'Bank Account' || t.type === 'Contra')) return false;
+        // FIXED: Allow 'Payment' to show up in Cash and Bank statements
+        if (activeTab === 'cash-section' && !(t.account === 'Cash' || t.type === 'Contra' || t.type === 'Payment')) return false;
+        if (activeTab === 'bank-section' && !(t.account === 'Bank Account' || t.type === 'Contra' || t.type === 'Payment')) return false;
 
         const tDate = new Date(t.date);
         if (currentView === 'This Month' || currentView === 'Category Month') {
