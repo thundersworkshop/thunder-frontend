@@ -200,10 +200,13 @@ async function loadData() {
             if (fetchedSettings) settings = fetchedSettings;
         }
 
-        document.getElementById('opening-cash').value = settings.openingCash || 0;
-        document.getElementById('opening-bank').value = settings.openingBank || 0;
-        if(settings.editorUsername) document.getElementById('set-editor-username').value = settings.editorUsername;
-        if(settings.editorPassword) document.getElementById('set-editor-pass').value = settings.editorPassword;
+        // ISOLATED BLOCK 1: Settings UI
+        try {
+            if (document.getElementById('opening-cash')) document.getElementById('opening-cash').value = settings.openingCash || 0;
+            if (document.getElementById('opening-bank')) document.getElementById('opening-bank').value = settings.openingBank || 0;
+            if (settings.editorUsername && document.getElementById('set-editor-username')) document.getElementById('set-editor-username').value = settings.editorUsername;
+            if (settings.editorPassword && document.getElementById('set-editor-pass')) document.getElementById('set-editor-pass').value = settings.editorPassword;
+        } catch(e) { console.warn("Settings UI Error:", e); }
         
         if (settings.deletionTimerStart) {
             const elapsedSeconds = Math.floor((Date.now() - new Date(settings.deletionTimerStart).getTime()) / 1000);
@@ -215,32 +218,77 @@ async function loadData() {
             }
         }
 
-        calculateBalances(masterTransactions, settings);
-        renderCategories(categories);
-        renderDashboard();
+        // ISOLATED BLOCK 2: Data Rendering (If one fails, the app survives!)
+        try { calculateBalances(masterTransactions, settings); } catch(e) { console.error("Balance Error:", e); }
+        try { renderCategories(categories); } catch(e) { console.error("Category Error:", e); }
+        try { renderDashboard(); } catch(e) { console.error("Dashboard Error:", e); }
         
-        if(!document.getElementById('dashboard-section').classList.contains('active')) {
-            processAndRenderTables();
-        }
+        try {
+            if(!document.getElementById('dashboard-section').classList.contains('active')) {
+                processAndRenderTables();
+            }
+        } catch(e) { console.error("Table Error:", e); }
 
+        // If the main fetch worked, show Green Connected badge!
         if (txRes.ok && statusEl) {
             statusEl.innerHTML = '🟢 Connected';
             statusEl.style.color = '#10b981';
             statusEl.style.background = 'rgba(16, 185, 129, 0.1)';
-        } else if (statusEl) {
-            statusEl.innerHTML = '🟠 Sync Issue';
-            statusEl.style.color = '#f97316';
-            statusEl.style.background = 'rgba(249, 115, 22, 0.1)';
         }
 
     } catch (error) {
         console.error("Critical Vault Network Error:", error);
+        
         if (statusEl) {
             statusEl.innerHTML = '🔴 Offline / Error';
             statusEl.style.color = '#ef4444';
             statusEl.style.background = 'rgba(239, 68, 68, 0.1)';
         }
+        
+        // Expose the exact crash message to the UI so we can see it!
+        if (typeof customAlert === "function") {
+            customAlert("Data Load Failed: " + error.message, "error");
+        } else {
+            alert("Data Load Failed: " + error.message);
+        }
     }
+}
+function calculateBalances(transactions, settings) {
+    // 1. Safely extract settings, defaulting to 0 if anything is corrupted
+    let currentCash = (settings && settings.openingCash) ? Number(settings.openingCash) : 0;
+    let currentBank = (settings && settings.openingBank) ? Number(settings.openingBank) : 0;
+
+    if (isNaN(currentCash)) currentCash = 0;
+    if (isNaN(currentBank)) currentBank = 0;
+
+    // 2. Safely calculate totals, ignoring corrupted old transactions
+    transactions.forEach(t => {
+        if (!t || !t.date) return; // SAFEGUARD: Skip completely broken records
+        
+        const amt = Number(t.amount) || 0; // SAFEGUARD: Treat missing amounts as 0
+        const acc = t.account || '';       // SAFEGUARD: Treat missing accounts as empty
+
+        if (t.type === 'Receipt') { 
+            if (acc === 'Cash') currentCash += amt; 
+            if (acc === 'Bank Account') currentBank += amt; 
+        } 
+        else if (t.type === 'Expense' || t.type === 'Payment') { 
+            if (acc === 'Cash') currentCash -= amt; 
+            if (acc === 'Bank Account') currentBank -= amt; 
+        } 
+        else if (t.type === 'Contra') { 
+            if (acc === 'Cash') { currentCash -= amt; currentBank += amt; } 
+            else if (acc === 'Bank Account') { currentBank -= amt; currentCash += amt; } 
+        }
+    });
+
+    // 3. Safely locate the UI elements, checking multiple possible HTML IDs
+    const cashEl = document.getElementById('live-cash') || document.getElementById('dash-cash');
+    const bankEl = document.getElementById('live-bank') || document.getElementById('dash-bank');
+
+    // 4. Update the UI only if the elements actually exist
+    if (cashEl) cashEl.innerText = '₹' + currentCash.toLocaleString('en-IN');
+    if (bankEl) bankEl.innerText = '₹' + currentBank.toLocaleString('en-IN');
 }
 
 function renderDashboard() {
@@ -784,6 +832,29 @@ window.clearUniversalSearch = function() {
     document.getElementById('uni-sort').value = 'date-desc';
     runUniversalSearch();
 }
+function renderCategories(categories) {
+    const categoryDropdown = document.getElementById('category');
+    const categoryTable = document.getElementById('category-table-body');
+    
+    // Safely update the entry dropdown
+    if (categoryDropdown) {
+        categoryDropdown.innerHTML = '<option value="" disabled selected>Select a Category...</option>';
+        categories.forEach(cat => {
+            if(cat && cat.name) categoryDropdown.innerHTML += `<option value="${cat.name}">${cat.name}</option>`;
+        });
+    }
+    
+    // Safely update the settings table
+    if (categoryTable) {
+        categoryTable.innerHTML = '';
+        categories.forEach(cat => {
+            if(cat && cat.name) {
+                const delBtn = `<button class="del-btn" onclick="deleteCategory('${cat._id}')">Delete</button>`;
+                categoryTable.innerHTML += `<tr><td data-label="Category">${cat.name}</td><td data-label="Action">${delBtn}</td></tr>`;
+            }
+        });
+    }
+}
 
 document.getElementById('entry-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -1002,10 +1073,33 @@ window.restoreEntry = async function(logId) {
 
 document.getElementById('category-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const catName = document.getElementById('new-category-name').value;
-    await fetch(`${API_URL}/categories`, { method: 'POST', headers: getAuthHeaders(true), body: JSON.stringify({ name: catName }) });
-    document.getElementById('category-form').reset();
-    loadData();
+    const catNameInput = document.getElementById('new-category-name');
+    const catName = catNameInput.value.trim();
+    
+    // Check locally first to prevent unnecessary server requests
+    const dropdown = document.getElementById('category');
+    let isDuplicate = false;
+    if (dropdown) {
+        Array.from(dropdown.options).forEach(opt => {
+            if (opt.value.toLowerCase() === catName.toLowerCase()) isDuplicate = true;
+        });
+    }
+
+    if (isDuplicate) return customAlert("Category already exists!", "warning");
+
+    const res = await fetch(`${API_URL}/categories`, { 
+        method: 'POST', 
+        headers: getAuthHeaders(true), 
+        body: JSON.stringify({ name: catName }) 
+    });
+
+    if (!res.ok) {
+        const data = await res.json();
+        return customAlert(data.error || "Failed to add category.", "error");
+    }
+
+    catNameInput.value = '';
+    await loadData(); 
     customAlert("Category added!", "success");
 });
 
@@ -1178,12 +1272,21 @@ const settingsAuthForm = document.getElementById('settings-auth-form');
 if (settingsAuthForm) {
     settingsAuthForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const email = document.getElementById('settings-email').value;
+        const email = document.getElementById('settings-email').value.trim();
         const pass = document.getElementById('settings-password').value;
         const errorEl = document.getElementById('settings-auth-error');
         const btn = settingsAuthForm.querySelector('button');
         
+        // STRICT SECURITY BLOCK (Silent Rejection)
+        // If the email doesn't match the logged-in user, we reject it with a generic error
+        if (auth.currentUser && email.toLowerCase() !== auth.currentUser.email.toLowerCase()) {
+            errorEl.innerText = "Access Denied: Incorrect Email or Password.";
+            errorEl.style.display = 'block';
+            return;
+        }
+        
         btn.innerText = "Verifying...";
+        errorEl.style.display = 'none';
         
         try {
             await signInWithEmailAndPassword(auth, email, pass);
@@ -1191,10 +1294,14 @@ if (settingsAuthForm) {
             document.getElementById('admin-login-box').style.display = 'none';
             document.getElementById('admin-zone').style.display = 'block';
             document.getElementById('audit-tab-btn').style.display = 'inline-block';
-            errorEl.style.display = 'none';
+            
             settingsAuthForm.reset();
             customAlert("Admin settings unlocked.", "success");
+            
+            processAndRenderTables(); 
+            
         } catch (error) {
+            // Keep the exact same generic error here so attackers can't tell the difference
             errorEl.innerText = "Access Denied: Incorrect Email or Password.";
             errorEl.style.display = 'block';
         } finally {

@@ -849,14 +849,19 @@
         <span id="toast-message"></span>
     </div>
 
+    <!-- CUSTOM TOAST NOTIFICATION (Replaces Alerts) -->
+    <div id="custom-toast" class="toast-hidden">
+        <span id="toast-message"></span>
+    </div>
+
     <!-- CUSTOM CONFIRM MODAL (Replaces Confirms) -->
-    <div id="custom-confirm-modal" class="modal-overlay" style="display: none; z-index: 9999;">
-        <div class="modal-content" style="max-width: 400px; text-align: center;">
+    <div id="custom-confirm-modal" class="modal-overlay" style="display: none; z-index: 99999;">
+        <div class="modal-content">
             <h3 style="margin-top: 0; color: var(--text-main);">Confirmation Required</h3>
             <p id="confirm-message" style="margin-bottom: 24px; color: var(--text-sub);"></p>
             <div class="flex-row" style="justify-content: center; gap: 12px;">
                 <button id="confirm-cancel-btn" class="secondary-btn" style="flex: 1;">Cancel</button>
-                <button id="confirm-ok-btn" class="edit-btn" style="flex: 1; background: #6366f1;">Proceed</button>
+                <button id="confirm-ok-btn" class="secondary-btn" style="flex: 1; background: #6366f1; color: #ffffff; border: none;">Proceed</button>
             </div>
         </div>
     </div>

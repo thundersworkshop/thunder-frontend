@@ -232,11 +232,12 @@ input[type="number"] {
 [data-theme="dark"] tbody tr:hover td span {
     color: inherit; 
 }
-/* --- CUSTOM POPUP SYSTEM --- */
+/* --- PREMIUM TOP-CENTER TOAST POPUP --- */
 #custom-toast {
     position: fixed;
-    bottom: 30px;
-    right: 30px;
+    top: 25px; /* Moved to top */
+    left: 50%; /* Centered horizontally */
+    transform: translateX(-50%) translateY(-100px) scale(0.9); /* Start hidden above */
     background: #1e293b;
     color: #f8fafc;
     padding: 14px 24px;
@@ -244,16 +245,16 @@ input[type="number"] {
     box-shadow: 0 10px 25px rgba(0,0,0,0.2);
     z-index: 10000;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    transform: translateY(100px) scale(0.9);
     opacity: 0;
     border-left: 5px solid #6366f1;
     font-weight: 500;
     font-size: 14px;
     pointer-events: none;
+    white-space: nowrap;
 }
 
 #custom-toast.toast-visible {
-    transform: translateY(0) scale(1);
+    transform: translateX(-50%) translateY(0) scale(1); /* Smoothly drop down */
     opacity: 1;
 }
 
@@ -266,4 +267,40 @@ input[type="number"] {
     border-right: 1px solid rgba(255,255,255,0.1);
     border-top: 1px solid rgba(255,255,255,0.1);
     border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+/* --- CUSTOM CONFIRM MODAL OVERLAY --- */
+#custom-confirm-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+}
+
+#custom-confirm-modal .modal-content {
+    background: var(--bg-panel, #ffffff);
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+    width: 90%;
+    max-width: 400px;
+    text-align: center;
+    border: 1px solid rgba(0,0,0,0.1);
+    animation: modalPopIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+[data-theme="dark"] #custom-confirm-modal .modal-content {
+    background: #1e293b;
+    border-color: rgba(255,255,255,0.1);
+}
+
+@keyframes modalPopIn {
+    0% { transform: scale(0.8); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
 }
