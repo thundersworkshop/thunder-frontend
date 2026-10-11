@@ -66,7 +66,6 @@ let masterTransactions = [];
 let masterAuditLogs = [];
 let currentFilteredData = []; 
 
-// SECURE WEEK START VARIABLE
 let currentWeekStartDay = 1; 
 
 let currentPage = 1;
@@ -177,7 +176,6 @@ function updateSubFilterUI(tabId, viewName) {
 
 window.changeSubFilter = function(tabId, val) { currentSubFilters[tabId] = val; currentPage = 1; processAndRenderTables(); }
 
-// SECURE WEEK START SAVER
 window.saveWeekStartDay = async function() { 
     const newDay = parseInt(document.getElementById('week-start-day').value);
     currentWeekStartDay = newDay;
@@ -222,7 +220,6 @@ async function loadData() {
             if (fetchedSettings) settings = fetchedSettings;
         }
 
-        // ISOLATED BLOCK 1: Settings UI (Includes secure Week Start load)
         try {
             currentWeekStartDay = settings.weekStartDay !== undefined ? parseInt(settings.weekStartDay) : 1;
             const weekEl = document.getElementById('week-start-day');
@@ -244,7 +241,6 @@ async function loadData() {
             }
         }
 
-        // ISOLATED BLOCK 2: Data Rendering
         try { calculateBalances(masterTransactions, settings); } catch(e) { console.error("Balance Error:", e); }
         try { renderCategories(categories); } catch(e) { console.error("Category Error:", e); }
         try { renderDashboard(); } catch(e) { console.error("Dashboard Error:", e); }
@@ -410,7 +406,6 @@ function processAndRenderTables() {
     const currentYear = today.getFullYear();
     const startDay = currentWeekStartDay;
 
-    // --- SORT & FILTER REGULAR TRANSACTIONS ---
     let filteredTx = masterTransactions.filter(t => {
         if (!t.date) return false; 
 
@@ -471,9 +466,7 @@ function processAndRenderTables() {
         pagedTx = filteredTx.slice(startIndex, endIndex);
     }
 
-    // --- SORT AUDIT LOGS (NEW LOGIC) ---
     let processedAuditLogs = [...masterAuditLogs];
-    
     if (activeTab === 'audit-section') {
         processedAuditLogs.sort((a, b) => {
             const dateA = a.dateChanged ? new Date(a.dateChanged).getTime() : 0;
@@ -482,7 +475,6 @@ function processAndRenderTables() {
             if (currentSort === 'date-desc') return dateB - dateA;
             if (currentSort === 'date-asc') return dateA - dateB;
             
-            // Allow sorting Audit Trail by the Original Record's Amount or Name
             const amtA = Number(a.originalData?.amount || 0);
             const amtB = Number(b.originalData?.amount || 0);
             if (currentSort === 'amount-desc') return amtB - amtA;
@@ -493,7 +485,7 @@ function processAndRenderTables() {
             if (currentSort === 'particulars-asc') return partA.localeCompare(partB);
             if (currentSort === 'particulars-desc') return partB.localeCompare(partA);
             
-            return dateB - dateA; // Default fallback to Newest
+            return dateB - dateA; 
         });
     }
 
@@ -575,7 +567,6 @@ window.exportTabToPDF = function() {
             return [t.date, t.particulars, t.type, t.account, `Rs. ${t.amount.toLocaleString('en-IN')}`]
         });
         
-        // FIX: Replaces the mixed total with isolated IN and OUT calculations
         foot = [['', '', 'SEARCH TOTALS:', `IN: Rs. ${searchIn.toLocaleString('en-IN')}`, `OUT: Rs. ${searchOut.toLocaleString('en-IN')}`]];
     }
     else if (activeTab === 'audit-section') {
@@ -780,7 +771,7 @@ function renderTables(transactions, auditLogs, activeTab) {
                 : `<button class="edit-btn" onclick="restoreEntry('${log._id}')">Restore</button>`;
 
             let timeStr = log.dateChanged || '';
-            let localTime = 'Old Test Record';
+            let localTime = 'Old Record';
             if (timeStr) {
                 if (!timeStr.includes('Z') && !timeStr.includes('T')) timeStr += " UTC";
                 localTime = new Date(timeStr).toLocaleString();
@@ -818,7 +809,7 @@ function renderTables(transactions, auditLogs, activeTab) {
                         <span style="background: rgba(239, 68, 68, 0.1); color: #ef4444; padding: 2px 6px; border-radius: 4px;">${val}</span>
                     </div>`;
                 
-                delFields.push(delF('Type', old.type || '-')); // INJECTED TYPE FIELD HERE
+                delFields.push(delF('Type', old.type || '-'));
                 delFields.push(delF('Date', old.date || '-'));
                 delFields.push(delF('Particulars', old.particulars || '-'));
                 delFields.push(delF('Amount', `₹${Number(old.amount || 0).toLocaleString('en-IN')}`));
@@ -842,7 +833,6 @@ window.runUniversalSearch = function() {
     const tbody = document.getElementById('search-table-body');
     const tfoot = document.getElementById('search-table-foot');
 
-    // FIX 1: Show clean empty state if NO search criteria is typed
     if (!query && !type && !start && !end) {
         tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 40px; color: #64748b;">Enter search criteria above to find records.</td></tr>`;
         if (tfoot) tfoot.innerHTML = '';
@@ -880,7 +870,6 @@ window.runUniversalSearch = function() {
         return;
     }
 
-    // FIX 2: Calculate separated totals for the Search UI
     let searchIn = 0;
     let searchOut = 0;
 
@@ -897,7 +886,6 @@ window.runUniversalSearch = function() {
         tbody.innerHTML += `<tr><td data-label="Date">${t.date}</td><td data-label="Particulars">${t.particulars}</td><td data-label="Type">${t.type}</td><td data-label="Account">${t.account}</td><td data-label="Amount" style="color: ${amtColor}; font-weight: bold;">₹${t.amount}</td><td data-label="Action">${actionCell}</td></tr>`;
     });
 
-    // Renders the proper IN vs OUT totals at the bottom of the search results
     if (tfoot) {
         tfoot.innerHTML = `<tr>
             <td colspan="4" style="text-align: right; font-weight: bold;">Search Totals:</td>
@@ -933,10 +921,45 @@ function renderCategories(categories) {
         categoryTable.innerHTML = '';
         categories.forEach(cat => {
             if(cat && cat.name) {
-                const delBtn = `<button class="del-btn" onclick="deleteCategory('${cat._id}')">Delete</button>`;
-                categoryTable.innerHTML += `<tr><td data-label="Category">${cat.name}</td><td data-label="Action">${delBtn}</td></tr>`;
+                const editBtn = `<button class="secondary-btn" style="margin-right: 8px; padding: 6px 14px; font-size: 12px; height: auto;" onclick="editCategory('${cat._id}', '${cat.name}')">Edit</button>`;
+                const delBtn = `<button class="del-btn" style="padding: 6px 14px; font-size: 12px; height: auto; margin: 0;" onclick="deleteCategory('${cat._id}')">Delete</button>`;
+                categoryTable.innerHTML += `<tr><td data-label="Category">${cat.name}</td><td data-label="Action" style="display: flex; justify-content: flex-end;">${editBtn}${delBtn}</td></tr>`;
             }
         });
+    }
+}
+
+// NEW: Edit Category (Auto updates transactions via backend)
+window.editCategory = async function(id, oldName) {
+    const newName = prompt(`Rename Category "${oldName}" to:`, oldName);
+    
+    if (!newName || newName.trim() === '' || newName.trim() === oldName) return;
+    
+    try {
+        const res = await fetch(`${API_URL}/categories/${id}`, {
+            method: 'PUT',
+            headers: getAuthHeaders(true),
+            body: JSON.stringify({ name: newName.trim() })
+        });
+        const data = await res.json();
+        
+        if (res.ok) {
+            customAlert(`Category renamed to ${newName.trim()}`, "success");
+            loadData();
+        } else {
+            customAlert(data.error || "Failed to rename.", "error");
+        }
+    } catch (e) {
+        customAlert("Network error.", "error");
+    }
+}
+
+// UPDATED: Simple delete (No blocking check)
+window.deleteCategory = async function(id) {
+    if (await customConfirm("Are you sure you want to delete this category?")) { 
+        await fetch(`${API_URL}/categories/${id}`, { method: 'DELETE', headers: getAuthHeaders() }); 
+        loadData(); 
+        customAlert("Category deleted.", "success");
     }
 }
 
@@ -1185,14 +1208,6 @@ document.getElementById('category-form').addEventListener('submit', async (e) =>
     await loadData(); 
     customAlert("Category added!", "success");
 });
-
-window.deleteCategory = async function(id) {
-    if (await customConfirm("Are you sure you want to delete this category?")) { 
-        await fetch(`${API_URL}/categories/${id}`, { method: 'DELETE', headers: getAuthHeaders() }); 
-        loadData(); 
-        customAlert("Category deleted.", "success");
-    }
-}
 
 document.getElementById('balance-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -1492,7 +1507,7 @@ document.getElementById('cancel-clean-btn').addEventListener('click', async () =
 });
 
 // ==========================================
-// NEW PROFILE & SECURITY LOGIC
+// PROFILE & SECURITY LOGIC
 // ==========================================
 
 document.getElementById('update-profile-form').addEventListener('submit', async (e) => {
