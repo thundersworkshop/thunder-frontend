@@ -304,3 +304,52 @@ input[type="number"] {
     0% { transform: scale(0.8); opacity: 0; }
     100% { transform: scale(1); opacity: 1; }
 }
+/* --- PROPER TOAST POPUP SIZING --- */
+#custom-toast {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1e293b;
+    color: #ffffff;
+    padding: 14px 28px;
+    border-radius: 50px;
+    z-index: 999999;
+    width: auto;
+    max-width: 90vw;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    text-align: center;
+    font-weight: 500;
+    font-size: 14px;
+    white-space: nowrap;
+}
+
+.toast-success { background: #10b981 !important; }
+.toast-error { background: #ef4444 !important; }
+.toast-warning { background: #f59e0b !important; }
+.toast-info { background: #3b82f6 !important; }
+
+/* --- COMPACT CATEGORY LIST (MOBILE & DESKTOP) --- */
+#category-table-body .del-btn {
+    margin: 0 !important;
+    padding: 6px 16px !important;
+    width: auto !important;
+}
+
+@media (max-width: 768px) {
+    #category-table-body tr {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        padding: 12px 16px !important;
+        margin-bottom: 8px !important;
+    }
+    #category-table-body td {
+        display: block !important;
+        border: none !important;
+        padding: 0 !important;
+    }
+    #category-table-body td::before {
+        display: none !important; /* Hides the "Category" / "Action" text labels on mobile */
+    }
+}

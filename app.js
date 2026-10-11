@@ -564,12 +564,19 @@ window.exportTabToPDF = function() {
     } 
     else if (activeTab === 'search-section') {
         head = [['Date', 'Particulars', 'Type', 'Account', 'Amount']];
-        let totalAmt = 0;
+        let searchIn = 0;
+        let searchOut = 0;
+        
         body = currentFilteredData.map(t => {
-            totalAmt += Number(t.amount);
+            let amt = Number(t.amount) || 0;
+            if (t.type === 'Receipt') searchIn += amt;
+            if (t.type === 'Expense' || t.type === 'Payment') searchOut += amt;
+            
             return [t.date, t.particulars, t.type, t.account, `Rs. ${t.amount.toLocaleString('en-IN')}`]
         });
-        foot = [['', '', '', 'TOTAL SEARCH AMOUNT:', `Rs. ${totalAmt.toLocaleString('en-IN')}`]];
+        
+        // FIX: Replaces the mixed total with isolated IN and OUT calculations
+        foot = [['', '', 'SEARCH TOTALS:', `IN: Rs. ${searchIn.toLocaleString('en-IN')}`, `OUT: Rs. ${searchOut.toLocaleString('en-IN')}`]];
     }
     else if (activeTab === 'audit-section') {
         head = [['Log Time', 'Action', 'Changed Fields']];
@@ -831,6 +838,12 @@ window.runUniversalSearch = function() {
     const start = document.getElementById('uni-start').value;
     const end = document.getElementById('uni-end').value;
     const sort = document.getElementById('uni-sort').value;
+    // FIX: If no search criteria is entered, display a clean empty state
+    if (!query && !type && !start && !end) {
+        document.getElementById('search-table-body').innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 40px; color: #64748b;">Enter search criteria above to find records.</td></tr>`;
+        currentFilteredData = [];
+        return;
+    }
 
     let results = masterTransactions.filter(t => {
         let matchesQuery = query === '' || 
