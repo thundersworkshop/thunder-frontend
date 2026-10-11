@@ -232,12 +232,18 @@ input[type="number"] {
 [data-theme="dark"] tbody tr:hover td span {
     color: inherit; 
 }
-/* --- PREMIUM TOP-CENTER TOAST POPUP --- */
+
+
+/* =========================================
+   PERFECTED UI FIXES (TOAST & CATEGORIES)
+   ========================================= */
+
+/* --- 1. PROPER TOAST POPUP SIZING (FIXED MOBILE OVERFLOW) --- */
 #custom-toast {
     position: fixed;
-    top: 25px; /* Moved to top */
-    left: 50%; /* Centered horizontally */
-    transform: translateX(-50%) translateY(-100px) scale(0.9); /* Start hidden above */
+    top: 25px; 
+    left: 50%; 
+    transform: translateX(-50%) translateY(-100px) scale(0.9); 
     background: #1e293b;
     color: #f8fafc;
     padding: 14px 24px;
@@ -250,11 +256,17 @@ input[type="number"] {
     font-weight: 500;
     font-size: 14px;
     pointer-events: none;
-    white-space: nowrap;
+    
+    /* FIX: Wrap text and limit width for mobile so it never goes off screen */
+    width: 90%; 
+    max-width: 400px;
+    white-space: normal !important; 
+    text-align: center;
+    line-height: 1.4;
 }
 
 #custom-toast.toast-visible {
-    transform: translateX(-50%) translateY(0) scale(1); /* Smoothly drop down */
+    transform: translateX(-50%) translateY(0) scale(1); 
     opacity: 1;
 }
 
@@ -268,7 +280,8 @@ input[type="number"] {
     border-top: 1px solid rgba(255,255,255,0.1);
     border-bottom: 1px solid rgba(255,255,255,0.1);
 }
-/* --- CUSTOM CONFIRM MODAL OVERLAY --- */
+
+/* --- 2. CUSTOM CONFIRM MODAL OVERLAY --- */
 #custom-confirm-modal {
     position: fixed;
     top: 0;
@@ -304,55 +317,43 @@ input[type="number"] {
     0% { transform: scale(0.8); opacity: 0; }
     100% { transform: scale(1); opacity: 1; }
 }
-/* --- ULTIMATE CATEGORY LIST FIX (MOBILE & DESKTOP) --- */
-/* 1. Convert the table body into a clean vertical stack */
-#category-table-body {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 10px !important;
-    padding-top: 10px;
-}
 
-/* 2. Force every row to be a neat horizontal box (Text left, Button right) */
-#category-table-body tr {
-    display: flex !important;
-    flex-direction: row !important;
-    justify-content: space-between !important;
-    align-items: center !important;
-    padding: 12px 20px !important;
-    margin: 0 !important;
-    background: var(--bg-panel, #ffffff);
-    border: 1px solid var(--border-color, rgba(0,0,0,0.1)) !important;
-    border-radius: 8px !important;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+/* --- 3. CATEGORY DESKTOP ALIGNMENT FIX --- */
+/* Forces the category rows to properly align under the headers on Desktop */
+#category-table-body { display: table-row-group !important; }
+#category-table-body tr { display: table-row !important; background: transparent !important; border: none !important; box-shadow: none !important; }
+#category-table-body td { 
+    display: table-cell !important; 
+    padding: 12px 16px !important; 
+    border-bottom: 1px solid var(--border-color) !important; 
+    text-align: left !important; 
+    vertical-align: middle !important;
 }
+#category-table-body td:last-child { text-align: right !important; }
+#category-table-body .del-btn { margin: 0 !important; width: auto !important; padding: 6px 14px !important; font-size: 12px !important; }
 
-/* 3. Strip away all clunky table cell padding and borders */
-#category-table-body td {
-    display: block !important;
-    border: none !important;
-    padding: 0 !important;
-    text-align: left !important;
-    width: auto !important;
-}
-
-/* 4. Hide the auto-generated mobile text labels (like "Action:") */
-#category-table-body td::before {
-    display: none !important;
-}
-
-/* 5. Make the category name bold and crisp */
-#category-table-body td:first-child {
-    font-weight: 600 !important;
-    font-size: 15px !important;
-    color: var(--text-main, #1e293b) !important;
-}
-
-/* 6. Shrink the delete button so it fits perfectly on the right */
-#category-table-body .del-btn {
-    margin: 0 !important;
-    padding: 6px 14px !important;
-    width: auto !important;
-    font-size: 12px !important;
-    border-radius: 6px !important;
+/* --- 4. CATEGORY MOBILE UI FIX (BEAUTIFUL CARDS) --- */
+/* Creates a specific, clean layout just for the Category list on Mobile */
+@media (max-width: 768px) {
+    #category-table-body tr {
+        display: flex !important;
+        flex-direction: row !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        padding: 12px 16px !important;
+        margin-bottom: 8px !important;
+        background: var(--card-bg) !important;
+        border-radius: 8px !important;
+        border: 1px solid var(--border-color) !important;
+        box-shadow: 0 2px 4px var(--shadow-base) !important;
+    }
+    #category-table-body td {
+        display: block !important;
+        padding: 0 !important;
+        border: none !important;
+        width: auto !important;
+    }
+    /* Hides the clunky mobile labels like "Action:" */
+    #category-table-body td::before { display: none !important; } 
+    #category-table-body td:first-child { font-weight: 600; font-size: 15px; color: var(--text-main); }
 }

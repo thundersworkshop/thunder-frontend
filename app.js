@@ -838,9 +838,14 @@ window.runUniversalSearch = function() {
     const start = document.getElementById('uni-start').value;
     const end = document.getElementById('uni-end').value;
     const sort = document.getElementById('uni-sort').value;
-    // FIX: If no search criteria is entered, display a clean empty state
+
+    const tbody = document.getElementById('search-table-body');
+    const tfoot = document.getElementById('search-table-foot');
+
+    // FIX 1: Show clean empty state if NO search criteria is typed
     if (!query && !type && !start && !end) {
-        document.getElementById('search-table-body').innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 40px; color: #64748b;">Enter search criteria above to find records.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 40px; color: #64748b;">Enter search criteria above to find records.</td></tr>`;
+        if (tfoot) tfoot.innerHTML = '';
         currentFilteredData = [];
         return;
     }
@@ -867,22 +872,41 @@ window.runUniversalSearch = function() {
     });
 
     currentFilteredData = results;
-
-    const tbody = document.getElementById('search-table-body');
     tbody.innerHTML = '';
 
     if(results.length === 0) {
         tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 30px;">No matching records found.</td></tr>`;
+        if (tfoot) tfoot.innerHTML = '';
         return;
     }
 
+    // FIX 2: Calculate separated totals for the Search UI
+    let searchIn = 0;
+    let searchOut = 0;
+
     results.forEach(t => {
+        const amt = Number(t.amount) || 0;
+        if (t.type === 'Receipt') searchIn += amt;
+        else if (t.type === 'Expense' || t.type === 'Payment') searchOut += amt;
+
         const editBtn = `<button class="edit-btn" onclick="openEditModal('${t._id}', '${t.date}', '${t.type}', '${encodeURIComponent(t.particulars)}', '${t.amount}', '${t.category || ''}', '${t.account}', '${encodeURIComponent(t.notes || '')}', '${t.recordedBy || 'System'}')">Edit</button>`;
         const delBtn = isAdminUnlocked ? `<button class="del-btn" onclick="deleteEntry('${t._id}')">Delete</button>` : `<button class="del-btn" disabled style="opacity: 0.3; cursor:not-allowed;">Locked</button>`;
         const actionCell = `${editBtn} ${delBtn}`;
         let amtColor = t.type === 'Receipt' ? '#10b981' : ((t.type === 'Expense' || t.type === 'Payment') ? '#ef4444' : 'inherit');
+        
         tbody.innerHTML += `<tr><td data-label="Date">${t.date}</td><td data-label="Particulars">${t.particulars}</td><td data-label="Type">${t.type}</td><td data-label="Account">${t.account}</td><td data-label="Amount" style="color: ${amtColor}; font-weight: bold;">₹${t.amount}</td><td data-label="Action">${actionCell}</td></tr>`;
     });
+
+    // Renders the proper IN vs OUT totals at the bottom of the search results
+    if (tfoot) {
+        tfoot.innerHTML = `<tr>
+            <td colspan="4" style="text-align: right; font-weight: bold;">Search Totals:</td>
+            <td colspan="2">
+                <span style="color: #10b981;">IN: ₹${searchIn.toLocaleString('en-IN')}</span> &nbsp;|&nbsp; 
+                <span style="color: #ef4444;">OUT: ₹${searchOut.toLocaleString('en-IN')}</span>
+            </td>
+        </tr>`;
+    }
 }
 
 window.clearUniversalSearch = function() {
