@@ -56,12 +56,18 @@ window.customConfirm = function(message) {
     });
 };
 
+// ==========================================
+// GLOBAL STATE & SETUP
+// ==========================================
 let isAdminUnlocked = false; 
 let currentUserToken = null; 
 
 let masterTransactions = [];
 let masterAuditLogs = [];
 let currentFilteredData = []; 
+
+// SECURE WEEK START VARIABLE
+let currentWeekStartDay = 1; 
 
 let currentPage = 1;
 const rowsPerPage = 50;
@@ -151,7 +157,6 @@ function updateSubFilterUI(tabId, viewName) {
         container.style.display = 'block';
     } 
     else if (viewName === 'All Month') {
-        // SAFEGUARD: Filter out bad data before using substring
         let validDates = masterTransactions.filter(t => t.date).map(t => t.date.substring(0, 7));
         let months = [...new Set(validDates)].sort().reverse();
         
@@ -171,7 +176,24 @@ function updateSubFilterUI(tabId, viewName) {
 }
 
 window.changeSubFilter = function(tabId, val) { currentSubFilters[tabId] = val; currentPage = 1; processAndRenderTables(); }
-window.saveWeekStartDay = function() { localStorage.setItem('weekStartDay', document.getElementById('week-start-day').value); processAndRenderTables(); }
+
+// SECURE WEEK START SAVER
+window.saveWeekStartDay = async function() { 
+    const newDay = parseInt(document.getElementById('week-start-day').value);
+    currentWeekStartDay = newDay;
+    
+    try {
+        await fetch(`${API_URL}/settings`, { 
+            method: 'POST', 
+            headers: getAuthHeaders(true), 
+            body: JSON.stringify({ weekStartDay: newDay }) 
+        });
+        customAlert("Preference saved securely!", "success");
+        processAndRenderTables(); 
+    } catch(e) {
+        customAlert("Failed to save preference.", "error");
+    }
+}
 
 async function loadData() {
     enforceDateRules(); 
@@ -193,15 +215,19 @@ async function loadData() {
         const catRes = await fetch(`${API_URL}/categories`, { headers: getAuthHeaders() });
         const categories = catRes.ok ? await catRes.json() : [];
 
-        let settings = { openingCash: 0, openingBank: 0 }; 
+        let settings = { openingCash: 0, openingBank: 0, weekStartDay: 1 }; 
         const setRes = await fetch(`${API_URL}/settings`, { headers: getAuthHeaders() });
         if (setRes.ok) {
             const fetchedSettings = await setRes.json();
             if (fetchedSettings) settings = fetchedSettings;
         }
 
-        // ISOLATED BLOCK 1: Settings UI
+        // ISOLATED BLOCK 1: Settings UI (Includes secure Week Start load)
         try {
+            currentWeekStartDay = settings.weekStartDay !== undefined ? parseInt(settings.weekStartDay) : 1;
+            const weekEl = document.getElementById('week-start-day');
+            if (weekEl) weekEl.value = currentWeekStartDay;
+
             if (document.getElementById('opening-cash')) document.getElementById('opening-cash').value = settings.openingCash || 0;
             if (document.getElementById('opening-bank')) document.getElementById('opening-bank').value = settings.openingBank || 0;
             if (settings.editorUsername && document.getElementById('set-editor-username')) document.getElementById('set-editor-username').value = settings.editorUsername;
@@ -218,7 +244,7 @@ async function loadData() {
             }
         }
 
-        // ISOLATED BLOCK 2: Data Rendering (If one fails, the app survives!)
+        // ISOLATED BLOCK 2: Data Rendering
         try { calculateBalances(masterTransactions, settings); } catch(e) { console.error("Balance Error:", e); }
         try { renderCategories(categories); } catch(e) { console.error("Category Error:", e); }
         try { renderDashboard(); } catch(e) { console.error("Dashboard Error:", e); }
@@ -229,7 +255,6 @@ async function loadData() {
             }
         } catch(e) { console.error("Table Error:", e); }
 
-        // If the main fetch worked, show Green Connected badge!
         if (txRes.ok && statusEl) {
             statusEl.innerHTML = '🟢 Connected';
             statusEl.style.color = '#10b981';
@@ -245,7 +270,6 @@ async function loadData() {
             statusEl.style.background = 'rgba(239, 68, 68, 0.1)';
         }
         
-        // Expose the exact crash message to the UI so we can see it!
         if (typeof customAlert === "function") {
             customAlert("Data Load Failed: " + error.message, "error");
         } else {
@@ -253,20 +277,19 @@ async function loadData() {
         }
     }
 }
+
 function calculateBalances(transactions, settings) {
-    // 1. Safely extract settings, defaulting to 0 if anything is corrupted
     let currentCash = (settings && settings.openingCash) ? Number(settings.openingCash) : 0;
     let currentBank = (settings && settings.openingBank) ? Number(settings.openingBank) : 0;
 
     if (isNaN(currentCash)) currentCash = 0;
     if (isNaN(currentBank)) currentBank = 0;
 
-    // 2. Safely calculate totals, ignoring corrupted old transactions
     transactions.forEach(t => {
-        if (!t || !t.date) return; // SAFEGUARD: Skip completely broken records
+        if (!t || !t.date) return; 
         
-        const amt = Number(t.amount) || 0; // SAFEGUARD: Treat missing amounts as 0
-        const acc = t.account || '';       // SAFEGUARD: Treat missing accounts as empty
+        const amt = Number(t.amount) || 0; 
+        const acc = t.account || '';       
 
         if (t.type === 'Receipt') { 
             if (acc === 'Cash') currentCash += amt; 
@@ -282,11 +305,9 @@ function calculateBalances(transactions, settings) {
         }
     });
 
-    // 3. Safely locate the UI elements, checking multiple possible HTML IDs
     const cashEl = document.getElementById('live-cash') || document.getElementById('dash-cash');
     const bankEl = document.getElementById('live-bank') || document.getElementById('dash-bank');
 
-    // 4. Update the UI only if the elements actually exist
     if (cashEl) cashEl.innerText = '₹' + currentCash.toLocaleString('en-IN');
     if (bankEl) bankEl.innerText = '₹' + currentBank.toLocaleString('en-IN');
 }
@@ -308,7 +329,7 @@ function renderDashboard() {
     let monthExpenses = 0;
     let catTotals = {};
     masterTransactions.forEach(t => {
-        if (!t.date) return; // SAFEGUARD: Skip corrupt data
+        if (!t.date) return; 
         if (t.type === 'Expense' && t.date.startsWith(currentMonthStr)) {
             monthExpenses += Number(t.amount);
             catTotals[t.category] = (catTotals[t.category] || 0) + Number(t.amount);
@@ -341,7 +362,7 @@ function renderDashboard() {
     }
 
     masterTransactions.forEach(t => {
-        if (!t.date) return; // SAFEGUARD: Skip corrupt data
+        if (!t.date) return;
         let monthKey = t.date.substring(0, 7);
         if (flowData[monthKey]) {
             let amt = Number(t.amount);
@@ -387,13 +408,12 @@ function processAndRenderTables() {
     const today = new Date();
     const currentMonth = today.getMonth();
     const currentYear = today.getFullYear();
-    const startDay = parseInt(localStorage.getItem('weekStartDay') || '1');
+    const startDay = currentWeekStartDay;
 
     let filteredTx = masterTransactions.filter(t => {
-        if (!t.date) return false; // SAFEGUARD: Instantly hide corrupt records
+        if (!t.date) return false; 
 
         if (activeTab === 'expense-section' && t.type !== 'Expense') return false;
-        // FIXED: Allow 'Payment' to show up in Cash and Bank statements
         if (activeTab === 'cash-section' && !(t.account === 'Cash' || t.type === 'Contra' || t.type === 'Payment')) return false;
         if (activeTab === 'bank-section' && !(t.account === 'Bank Account' || t.type === 'Contra' || t.type === 'Payment')) return false;
 
@@ -554,7 +574,7 @@ window.exportTabToPDF = function() {
                 
                 changeStr = changes.length > 0 ? changes.join(' | ') : 'No specific fields changed.';
             } else if (originalAction === 'DELETED') {
-                changeStr = `DELETED: ${old.date} | ${old.particulars} | Rs.${Number(old.amount || 0).toLocaleString('en-IN')}`;
+                changeStr = `DELETED: TYPE: ${old.type} | ${old.date} | ${old.particulars} | Rs.${Number(old.amount || 0).toLocaleString('en-IN')}`;
             }
             
             return [localTime, actionStr, changeStr];
@@ -764,6 +784,7 @@ function renderTables(transactions, auditLogs, activeTab) {
                         <span style="background: rgba(239, 68, 68, 0.1); color: #ef4444; padding: 2px 6px; border-radius: 4px;">${val}</span>
                     </div>`;
                 
+                delFields.push(delF('Type', old.type || '-')); // INJECTED TYPE FIELD HERE
                 delFields.push(delF('Date', old.date || '-'));
                 delFields.push(delF('Particulars', old.particulars || '-'));
                 delFields.push(delF('Amount', `₹${Number(old.amount || 0).toLocaleString('en-IN')}`));
@@ -832,11 +853,11 @@ window.clearUniversalSearch = function() {
     document.getElementById('uni-sort').value = 'date-desc';
     runUniversalSearch();
 }
+
 function renderCategories(categories) {
     const categoryDropdown = document.getElementById('category');
     const categoryTable = document.getElementById('category-table-body');
     
-    // Safely update the entry dropdown
     if (categoryDropdown) {
         categoryDropdown.innerHTML = '<option value="" disabled selected>Select a Category...</option>';
         categories.forEach(cat => {
@@ -844,7 +865,6 @@ function renderCategories(categories) {
         });
     }
     
-    // Safely update the settings table
     if (categoryTable) {
         categoryTable.innerHTML = '';
         categories.forEach(cat => {
@@ -1076,7 +1096,6 @@ document.getElementById('category-form').addEventListener('submit', async (e) =>
     const catNameInput = document.getElementById('new-category-name');
     const catName = catNameInput.value.trim();
     
-    // Check locally first to prevent unnecessary server requests
     const dropdown = document.getElementById('category');
     let isDuplicate = false;
     if (dropdown) {
@@ -1141,7 +1160,7 @@ if(document.getElementById('edit-type')) {
 }
 
 // -------------------------------------------------------------
-// FIREBASE AUTHENTICATION LOGIC (Multi-User & Email Verification)
+// FIREBASE AUTHENTICATION LOGIC
 // -------------------------------------------------------------
 
 onAuthStateChanged(auth, async (user) => {
@@ -1277,8 +1296,6 @@ if (settingsAuthForm) {
         const errorEl = document.getElementById('settings-auth-error');
         const btn = settingsAuthForm.querySelector('button');
         
-        // STRICT SECURITY BLOCK (Silent Rejection)
-        // If the email doesn't match the logged-in user, we reject it with a generic error
         if (auth.currentUser && email.toLowerCase() !== auth.currentUser.email.toLowerCase()) {
             errorEl.innerText = "Access Denied: Incorrect Email or Password.";
             errorEl.style.display = 'block';
@@ -1301,7 +1318,6 @@ if (settingsAuthForm) {
             processAndRenderTables(); 
             
         } catch (error) {
-            // Keep the exact same generic error here so attackers can't tell the difference
             errorEl.innerText = "Access Denied: Incorrect Email or Password.";
             errorEl.style.display = 'block';
         } finally {
