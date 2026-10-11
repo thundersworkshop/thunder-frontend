@@ -410,6 +410,7 @@ function processAndRenderTables() {
     const currentYear = today.getFullYear();
     const startDay = currentWeekStartDay;
 
+    // --- SORT & FILTER REGULAR TRANSACTIONS ---
     let filteredTx = masterTransactions.filter(t => {
         if (!t.date) return false; 
 
@@ -470,7 +471,33 @@ function processAndRenderTables() {
         pagedTx = filteredTx.slice(startIndex, endIndex);
     }
 
-    renderTables(pagedTx, masterAuditLogs, activeTab);
+    // --- SORT AUDIT LOGS (NEW LOGIC) ---
+    let processedAuditLogs = [...masterAuditLogs];
+    
+    if (activeTab === 'audit-section') {
+        processedAuditLogs.sort((a, b) => {
+            const dateA = a.dateChanged ? new Date(a.dateChanged).getTime() : 0;
+            const dateB = b.dateChanged ? new Date(b.dateChanged).getTime() : 0;
+            
+            if (currentSort === 'date-desc') return dateB - dateA;
+            if (currentSort === 'date-asc') return dateA - dateB;
+            
+            // Allow sorting Audit Trail by the Original Record's Amount or Name
+            const amtA = Number(a.originalData?.amount || 0);
+            const amtB = Number(b.originalData?.amount || 0);
+            if (currentSort === 'amount-desc') return amtB - amtA;
+            if (currentSort === 'amount-asc') return amtA - amtB;
+            
+            const partA = a.originalData?.particulars || '';
+            const partB = b.originalData?.particulars || '';
+            if (currentSort === 'particulars-asc') return partA.localeCompare(partB);
+            if (currentSort === 'particulars-desc') return partB.localeCompare(partA);
+            
+            return dateB - dateA; // Default fallback to Newest
+        });
+    }
+
+    renderTables(pagedTx, processedAuditLogs, activeTab);
 }
 
 window.exportTabToPDF = function() {
