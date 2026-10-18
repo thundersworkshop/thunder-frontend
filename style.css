@@ -167,7 +167,6 @@ tfoot td { position: sticky; bottom: 0; background: var(--card-bg); z-index: 10;
     td[data-label="Note"] { width: 100%; order: 6; font-size: 12px; color: var(--text-sub); font-style: italic; margin-top: 4px; }
     
     td[data-label="Action"] { width: 100%; order: 7; display: flex; flex-direction: row; flex-wrap: wrap; gap: 8px; margin-top: 10px; padding-top: 12px; border-top: 1px dashed var(--border-color); }
-    
     .edit-btn, .del-btn { flex: 1; margin: 0 !important; padding: 10px !important; font-size: 13px; border-radius: 8px; text-align: center;}
     td[data-label="Amount"] span { padding: 1px 4px !important; font-size: 9px !important; border-radius: 3px !important; }
 }
@@ -340,17 +339,24 @@ input[type="number"] {
 }
 
 @media (max-width: 768px) {
-    /* Convert to beautiful mobile cards */
+    /* Convert to beautiful mobile cards matching transactions */
+    #category-table-body {
+        display: block !important;
+        width: 100% !important;
+    }
+    
     #category-table-body tr {
         display: flex !important;
         flex-direction: column !important;
+        width: 100% !important; /* Forces the card to stretch all the way across */
         padding: 15px !important;
         margin-bottom: 12px !important;
         background: var(--card-bg) !important;
         border-radius: 12px !important;
         border: 1px solid var(--border-color) !important;
         box-shadow: 0 2px 6px var(--shadow-base) !important;
-        align-items: flex-start !important; /* Align text to the left */
+        align-items: stretch !important; 
+        box-sizing: border-box !important;
     }
     
     #category-table-body td:first-child { 
@@ -363,6 +369,7 @@ input[type="number"] {
         margin-bottom: 15px !important;
         border: none !important;
         text-align: left !important;
+        box-sizing: border-box !important;
     }
 
     #category-table-body td:last-child {
@@ -374,11 +381,12 @@ input[type="number"] {
         border: none !important;
         border-top: 1px dashed var(--border-color) !important;
         justify-content: space-between !important;
+        box-sizing: border-box !important;
     }
     
     #category-table-body .secondary-btn,
     #category-table-body .del-btn {
-        flex: 1 !important; /* Makes both buttons big, equal, and easy to tap */
+        flex: 1 !important; /* Big equal buttons spanning the card */
         margin: 0 !important;
         padding: 10px !important;
         font-size: 13px !important;
