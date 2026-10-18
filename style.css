@@ -159,7 +159,7 @@ tfoot td { position: sticky; bottom: 0; background: var(--card-bg); z-index: 10;
     
     td[data-label="Particulars"], td[data-label="Received From"], td[data-label="Original Details"] { font-size: 14px; font-weight: 700; width: 50%; order: 1; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     
-    /* FIX: Removed forced color so JS can dynamically handle text color */
+    /* Removed forced color so JS can dynamically handle text color */
     td[data-label="Amount"] { font-size: 15px; font-weight: 800; width: 45%; text-align: right; order: 2; display: flex; justify-content: flex-end; align-items: center; gap: 4px; margin-left: auto; }
     
     td[data-label="Date"], td[data-label="Log Date"] { width: 40%; order: 3; font-size: 12px; color: var(--text-sub); }
@@ -345,14 +345,17 @@ input[type="number"] {
         box-shadow: 0 2px 4px var(--shadow-base) !important;
     }
     
+    /* FIX: Solid min-width prevents text from squishing into a vertical line */
     #category-table-body td:first-child { 
         display: block !important;
-        flex: 1;
-        font-weight: 600; 
-        font-size: 15px; 
-        color: var(--text-main); 
-        word-wrap: break-word;
-        white-space: normal;
+        flex: 1 1 auto !important;
+        min-width: 50% !important; /* Forces the text container to hold its shape */
+        font-weight: 600 !important; 
+        font-size: 15px !important; 
+        color: var(--text-main) !important; 
+        overflow-wrap: break-word !important;
+        word-break: break-word !important;
+        white-space: normal !important;
         padding: 0 !important;
         padding-right: 15px !important;
         border: none !important;
@@ -362,7 +365,7 @@ input[type="number"] {
         display: flex !important;
         flex-direction: row !important;
         gap: 8px !important;
-        flex-shrink: 0;
+        flex-shrink: 0 !important;
         padding: 0 !important;
         border: none !important;
     }
