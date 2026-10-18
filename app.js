@@ -268,7 +268,10 @@ async function loadData() {
         try { renderDashboard(); } catch(e) { console.error("Dashboard Error:", e); }
         
         try {
-            if(!document.getElementById('dashboard-section').classList.contains('active')) {
+            const activeTab = document.querySelector('.tab-content.active');
+            if (activeTab && activeTab.id === 'search-section') {
+                runUniversalSearch(); // Refreshes Search if you edit/delete from there
+            } else if (activeTab && activeTab.id !== 'dashboard-section') {
                 processAndRenderTables();
             }
         } catch(e) { console.error("Table Error:", e); }
