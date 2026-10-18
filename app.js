@@ -37,7 +37,7 @@ window.customConfirm = function(message) {
         const okBtn = document.getElementById('confirm-ok-btn');
         const cancelBtn = document.getElementById('confirm-cancel-btn');
         
-        if(!modal || !msgEl) return resolve(confirm(message)); // Fallback
+        if(!modal || !msgEl) return resolve(confirm(message)); 
         
         msgEl.innerHTML = message;
         modal.style.display = 'flex';
@@ -55,6 +55,28 @@ window.customConfirm = function(message) {
         cancelBtn.addEventListener('click', handleCancel);
     });
 };
+
+// ==========================================
+// AUTO-LOGOUT & GLOBAL INACTIVITY TIMER
+// ==========================================
+let logoutTimer;
+
+function resetLogoutTimer() {
+    clearTimeout(logoutTimer);
+    if (auth.currentUser) {
+        logoutTimer = setTimeout(() => {
+            signOut(auth).then(() => {
+                alert("For your security, you have been automatically logged out due to 5 minutes of inactivity.");
+                window.location.reload();
+            });
+        }, 5 * 60 * 1000); // 5 minutes in milliseconds
+    }
+}
+
+// Track user activity to reset the timer
+['mousemove', 'keydown', 'scroll', 'click', 'touchstart'].forEach(evt => {
+    window.addEventListener(evt, resetLogoutTimer);
+});
 
 // ==========================================
 // GLOBAL STATE & SETUP
@@ -195,6 +217,7 @@ window.saveWeekStartDay = async function() {
 
 async function loadData() {
     enforceDateRules(); 
+    resetLogoutTimer(); // Initialize timer when data loads
     
     const statusEl = document.getElementById('server-status');
     if (statusEl) {
@@ -265,12 +288,7 @@ async function loadData() {
             statusEl.style.color = '#ef4444';
             statusEl.style.background = 'rgba(239, 68, 68, 0.1)';
         }
-        
-        if (typeof customAlert === "function") {
-            customAlert("Data Load Failed: " + error.message, "error");
-        } else {
-            alert("Data Load Failed: " + error.message);
-        }
+        customAlert("Data Load Failed: " + error.message, "error");
     }
 }
 
@@ -349,11 +367,16 @@ function renderDashboard() {
         options: { responsive: true, maintainAspectRatio: false, resizeDelay: 200, plugins: { legend: { position: 'right', labels: { boxWidth: 10, font: { family: 'Poppins', size: 10 } } } } }
     });
 
+    // FIX: 6-Month Cash Flow Timezone Bug Fixed
     let flowData = {};
     for (let i = 5; i >= 0; i--) {
         let d = new Date(today.getFullYear(), today.getMonth() - i, 1);
         let label = d.toLocaleString('default', { month: 'short', year: '2-digit' });
-        let key = d.toISOString().substring(0, 7);
+        
+        let year = d.getFullYear();
+        let month = (d.getMonth() + 1).toString().padStart(2, '0');
+        let key = `${year}-${month}`; 
+        
         flowData[key] = { label: label, in: 0, out: 0 };
     }
 
@@ -471,7 +494,6 @@ function processAndRenderTables() {
         processedAuditLogs.sort((a, b) => {
             const dateA = a.dateChanged ? new Date(a.dateChanged).getTime() : 0;
             const dateB = b.dateChanged ? new Date(b.dateChanged).getTime() : 0;
-            
             if (currentSort === 'date-desc') return dateB - dateA;
             if (currentSort === 'date-asc') return dateA - dateB;
             
@@ -484,7 +506,6 @@ function processAndRenderTables() {
             const partB = b.originalData?.particulars || '';
             if (currentSort === 'particulars-asc') return partA.localeCompare(partB);
             if (currentSort === 'particulars-desc') return partB.localeCompare(partA);
-            
             return dateB - dateA; 
         });
     }
@@ -518,7 +539,7 @@ window.exportTabToPDF = function() {
     if(view === 'This Month' || view === 'Category Month') {
         periodText = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
     }
-    if(sub) periodText += ` | ${sub}`;
+    if(sub) periodText += ` | sub`;
     if(activeTab === 'search-section' || activeTab === 'audit-section') periodText = 'Custom Query';
 
     doc.setFontSize(20);
@@ -709,6 +730,7 @@ function renderTables(transactions, auditLogs, activeTab) {
 
         if (activeTab === 'expense-section' && t.type === 'Expense') {
             expenseTotal += amt;
+            // FIX: Expenses have no forced color logic
             document.getElementById('expense-table-body').innerHTML += `<tr><td data-label="Date">${t.date}</td><td data-label="Particulars">${t.particulars}</td><td data-label="Category">${t.category || '-'}</td><td data-label="Account">${t.account}</td><td data-label="Amount">₹${t.amount}</td><td data-label="Note">${displayNote}</td><td data-label="Action">${actionCell}</td></tr>`;
         }
         
@@ -718,11 +740,13 @@ function renderTables(transactions, auditLogs, activeTab) {
             if (t.type === 'Contra' && t.account === 'Bank Account') isCashIncrease = true; 
             if (isCashIncrease) cashIn += amt; else cashOut += amt;
 
+            // FIX: Explicitly coloring ONLY the statement amounts dynamically
+            let amtStyle = isCashIncrease ? 'color: #10b981;' : 'color: #ef4444;';
             const inOutBadge = isCashIncrease 
                 ? `<span style="background-color: rgba(16, 185, 129, 0.2); color: #059669; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-left: 8px;">IN</span>`
                 : `<span style="background-color: rgba(239, 68, 68, 0.2); color: #ef4444; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-left: 8px;">OUT</span>`;
 
-            document.getElementById('cash-table-body').innerHTML += `<tr><td data-label="Date">${t.date}</td><td data-label="Particulars">${t.particulars}</td><td data-label="Type">${t.type}</td><td data-label="Amount">₹${t.amount} ${inOutBadge}</td><td data-label="Note">${displayNote}</td><td data-label="Action">${actionCell}</td></tr>`;
+            document.getElementById('cash-table-body').innerHTML += `<tr><td data-label="Date">${t.date}</td><td data-label="Particulars">${t.particulars}</td><td data-label="Type">${t.type}</td><td data-label="Amount" style="${amtStyle} font-weight: bold;">₹${t.amount} ${inOutBadge}</td><td data-label="Note">${displayNote}</td><td data-label="Action">${actionCell}</td></tr>`;
         }
         
         if (activeTab === 'bank-section' && (t.account === 'Bank Account' || t.type === 'Contra' || t.type === 'Payment')) {
@@ -731,11 +755,13 @@ function renderTables(transactions, auditLogs, activeTab) {
             if (t.type === 'Contra' && t.account === 'Cash') isBankIncrease = true; 
             if (isBankIncrease) bankIn += amt; else bankOut += amt;
 
+            // FIX: Explicitly coloring ONLY the statement amounts dynamically
+            let bankAmtStyle = isBankIncrease ? 'color: #10b981;' : 'color: #ef4444;';
             const drCrBadge = isBankIncrease 
                 ? `<span style="background-color: rgba(16, 185, 129, 0.2); color: #059669; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-left: 8px;">CR.</span>`
                 : `<span style="background-color: rgba(239, 68, 68, 0.2); color: #ef4444; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-left: 8px;">DR.</span>`;
 
-            document.getElementById('bank-table-body').innerHTML += `<tr><td data-label="Date">${t.date}</td><td data-label="Particulars">${t.particulars}</td><td data-label="Type">${t.type}</td><td data-label="Amount">₹${t.amount} ${drCrBadge}</td><td data-label="Note">${displayNote}</td><td data-label="Action">${actionCell}</td></tr>`;
+            document.getElementById('bank-table-body').innerHTML += `<tr><td data-label="Date">${t.date}</td><td data-label="Particulars">${t.particulars}</td><td data-label="Type">${t.type}</td><td data-label="Amount" style="${bankAmtStyle} font-weight: bold;">₹${t.amount} ${drCrBadge}</td><td data-label="Note">${displayNote}</td><td data-label="Action">${actionCell}</td></tr>`;
         }
     });
 
@@ -809,7 +835,7 @@ function renderTables(transactions, auditLogs, activeTab) {
                         <span style="background: rgba(239, 68, 68, 0.1); color: #ef4444; padding: 2px 6px; border-radius: 4px;">${val}</span>
                     </div>`;
                 
-                delFields.push(delF('Type', old.type || '-'));
+                delFields.push(delF('Type', old.type || '-')); 
                 delFields.push(delF('Date', old.date || '-'));
                 delFields.push(delF('Particulars', old.particulars || '-'));
                 delFields.push(delF('Amount', `₹${Number(old.amount || 0).toLocaleString('en-IN')}`));
@@ -921,15 +947,18 @@ function renderCategories(categories) {
         categoryTable.innerHTML = '';
         categories.forEach(cat => {
             if(cat && cat.name) {
-                const editBtn = `<button class="secondary-btn" style="margin-right: 8px; padding: 6px 14px; font-size: 12px; height: auto;" onclick="editCategory('${cat._id}', '${cat.name}')">Edit</button>`;
-                const delBtn = `<button class="del-btn" style="padding: 6px 14px; font-size: 12px; height: auto; margin: 0;" onclick="deleteCategory('${cat._id}')">Delete</button>`;
-                categoryTable.innerHTML += `<tr><td data-label="Category">${cat.name}</td><td data-label="Action" style="display: flex; justify-content: flex-end;">${editBtn}${delBtn}</td></tr>`;
+                const editBtn = `<button class="secondary-btn" style="margin: 0; padding: 6px 14px; font-size: 12px; height: auto;" onclick="editCategory('${cat._id}', '${cat.name}')">Edit</button>`;
+                const delBtn = `<button class="del-btn" style="margin: 0; padding: 6px 14px; font-size: 12px; height: auto;" onclick="deleteCategory('${cat._id}')">Delete</button>`;
+                
+                categoryTable.innerHTML += `<tr>
+                    <td data-label="Category" style="flex: 1; word-wrap: break-word; white-space: normal; padding-right: 15px;">${cat.name}</td>
+                    <td data-label="Action" style="display: flex; gap: 8px; justify-content: flex-end; flex-shrink: 0;">${editBtn}${delBtn}</td>
+                </tr>`;
             }
         });
     }
 }
 
-// NEW: Edit Category (Auto updates transactions via backend)
 window.editCategory = async function(id, oldName) {
     const newName = prompt(`Rename Category "${oldName}" to:`, oldName);
     
@@ -954,7 +983,6 @@ window.editCategory = async function(id, oldName) {
     }
 }
 
-// UPDATED: Simple delete (No blocking check)
 window.deleteCategory = async function(id) {
     if (await customConfirm("Are you sure you want to delete this category?")) { 
         await fetch(`${API_URL}/categories/${id}`, { method: 'DELETE', headers: getAuthHeaders() }); 
@@ -1239,7 +1267,7 @@ if(document.getElementById('edit-type')) {
 }
 
 // -------------------------------------------------------------
-// FIREBASE AUTHENTICATION LOGIC
+// FIREBASE AUTHENTICATION LOGIC (With Email Verification Interceptor)
 // -------------------------------------------------------------
 
 onAuthStateChanged(auth, async (user) => {
@@ -1307,8 +1335,32 @@ if (formSignup) {
             document.getElementById('form-signup').reset();
             toggleAuth('login');
         } catch (error) {
+            // FIX: The Smart Interceptor - Checks if they are trying to sign up again because they forgot to verify
+            if (error.code === 'auth/email-already-in-use') {
+                try {
+                    // Secretly logs them in to check if they are unverified
+                    const tempCred = await signInWithEmailAndPassword(auth, email, password);
+                    if (!tempCred.user.emailVerified) {
+                        await sendEmailVerification(tempCred.user);
+                        await signOut(auth);
+                        customAlert("🚨 Email exists but is unverified. A NEW link has been sent to your inbox!", "warning");
+                        toggleAuth('login');
+                    } else {
+                        await signOut(auth);
+                        customAlert("Account already exists and is verified. Please log in.", "info");
+                        toggleAuth('login');
+                    }
+                    return; 
+                } catch (silentErr) {
+                    errorEl.innerText = "Email already in use. Please log in.";
+                    errorEl.style.display = 'block';
+                    btn.innerText = "Create Account";
+                    btn.disabled = false;
+                    return;
+                }
+            }
+
             let cleanMessage = "An error occurred. Please try again.";
-            if (error.code === 'auth/email-already-in-use') cleanMessage = "This email is already in use.";
             if (error.code === 'auth/weak-password') cleanMessage = "Password should be at least 6 characters.";
             if (error.code === 'auth/invalid-email') cleanMessage = "Invalid email format.";
 
@@ -1337,13 +1389,17 @@ if (formLogin) {
 
         try {
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            
+            // FIX: If they log in but aren't verified, automatically send a new link!
             if (!userCredential.user.emailVerified) {
+                await sendEmailVerification(userCredential.user);
                 await signOut(auth);
-                customAlert("🚨 Access Denied. Verify your email first.", "error");
+                customAlert("🚨 Email not verified. A NEW verification link has been sent to your inbox.", "warning");
                 btn.innerText = "Access Vault";
                 btn.disabled = false;
                 return;
             }
+            
             btn.innerText = "Access Vault";
             btn.disabled = false;
             customAlert("Welcome back!", "success");

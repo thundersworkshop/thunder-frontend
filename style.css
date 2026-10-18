@@ -158,7 +158,10 @@ tfoot td { position: sticky; bottom: 0; background: var(--card-bg); z-index: 10;
     td { padding: 0; border: none; text-align: left; background: transparent !important; height: auto; }
     
     td[data-label="Particulars"], td[data-label="Received From"], td[data-label="Original Details"] { font-size: 14px; font-weight: 700; width: 50%; order: 1; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    td[data-label="Amount"] { font-size: 15px; font-weight: 800; color: #10b981; width: 45%; text-align: right; order: 2; display: flex; justify-content: flex-end; align-items: center; gap: 4px; margin-left: auto; }
+    
+    /* FIX: Removed forced color so JS can dynamically handle text color */
+    td[data-label="Amount"] { font-size: 15px; font-weight: 800; width: 45%; text-align: right; order: 2; display: flex; justify-content: flex-end; align-items: center; gap: 4px; margin-left: auto; }
+    
     td[data-label="Date"], td[data-label="Log Date"] { width: 40%; order: 3; font-size: 12px; color: var(--text-sub); }
     td[data-label="Category"], td[data-label="Type"], td[data-label="Status"], td[data-label="Recorded By"] { width: 25%; order: 4; font-size: 12px; color: var(--text-sub); text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-left: auto;}
     td[data-label="Account"] { width: 25%; order: 5; font-size: 12px; color: var(--text-sub); text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-left: 5px; }
@@ -173,7 +176,6 @@ tfoot td { position: sticky; bottom: 0; background: var(--card-bg); z-index: 10;
    LIGHT MODE OVERRIDES (CARDS & INPUTS)
    ========================================= */
 
-/* 1. Fix the dark Profile Card & Settings Containers */
 body:not([data-theme="dark"]) #profile-section > div,
 body:not([data-theme="dark"]) .settings-card,
 body:not([data-theme="dark"]) .auth-box,
@@ -183,7 +185,6 @@ body:not([data-theme="dark"]) .auth-container {
     box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
 }
 
-/* Force Profile text to be readable */
 body:not([data-theme="dark"]) #profile-section > div p,
 body:not([data-theme="dark"]) #profile-section > div h2,
 body:not([data-theme="dark"]) #profile-section > div span,
@@ -191,7 +192,6 @@ body:not([data-theme="dark"]) #profile-section > div strong {
     color: #1e293b !important;
 }
 
-/* 2. Fix all dark Input Fields (Sign Up & Settings Lock) */
 body:not([data-theme="dark"]) input,
 body:not([data-theme="dark"]) select,
 body:not([data-theme="dark"]) textarea {
@@ -205,40 +205,33 @@ body:not([data-theme="dark"]) textarea::placeholder {
     color: #64748b !important;
 }
 
-/* Ensure form labels are dark */
 body:not([data-theme="dark"]) label,
 body:not([data-theme="dark"]) .auth-box p,
 body:not([data-theme="dark"]) .settings-card p {
     color: #475569 !important;
 }
-/* Hides up/down arrows on all number inputs (Chrome, Safari, Edge) */
 input::-webkit-outer-spin-button,
 input::-webkit-inner-spin-button {
     -webkit-appearance: none;
     margin: 0;
 }
-
-/* Hides up/down arrows on all number inputs (Firefox) */
 input[type="number"] {
     -moz-appearance: textfield;
 }
-/* Fix unreadable red hover in Dark Mode */
+
 [data-theme="dark"] tbody tr:hover td {
     background-color: rgba(255, 255, 255, 0.08) !important;
     color: #f8fafc !important;
 }
-
 [data-theme="dark"] tbody tr:hover td strong,
 [data-theme="dark"] tbody tr:hover td span {
     color: inherit; 
 }
 
-
 /* =========================================
    PERFECTED UI FIXES (TOAST & CATEGORIES)
    ========================================= */
 
-/* --- 1. PROPER TOAST POPUP SIZING (FIXED MOBILE OVERFLOW) --- */
 #custom-toast {
     position: fixed;
     top: 25px; 
@@ -256,8 +249,6 @@ input[type="number"] {
     font-weight: 500;
     font-size: 14px;
     pointer-events: none;
-    
-    /* FIX: Wrap text and limit width for mobile so it never goes off screen */
     width: 90%; 
     max-width: 400px;
     white-space: normal !important; 
@@ -281,7 +272,6 @@ input[type="number"] {
     border-bottom: 1px solid rgba(255,255,255,0.1);
 }
 
-/* --- 2. CUSTOM CONFIRM MODAL OVERLAY --- */
 #custom-confirm-modal {
     position: fixed;
     top: 0;
@@ -318,8 +308,7 @@ input[type="number"] {
     100% { transform: scale(1); opacity: 1; }
 }
 
-/* --- 3. CATEGORY DESKTOP ALIGNMENT FIX --- */
-/* Forces the category rows to properly align under the headers on Desktop */
+/* --- FIX: PERFECT HORIZONTAL CATEGORY LAYOUT --- */
 #category-table-body { display: table-row-group !important; }
 #category-table-body tr { display: table-row !important; background: transparent !important; border: none !important; box-shadow: none !important; }
 #category-table-body td { 
@@ -329,17 +318,14 @@ input[type="number"] {
     text-align: left !important; 
     vertical-align: middle !important;
 }
-#category-table-body td:last-child { text-align: right !important; }
-#category-table-body .del-btn { margin: 0 !important; width: auto !important; padding: 6px 14px !important; font-size: 12px !important; }
 
-/* --- 4. CATEGORY MOBILE UI FIX (BEAUTIFUL CARDS) --- */
-/* Creates a specific, clean layout just for the Category list on Mobile */
 @media (max-width: 768px) {
     #category-table-body tr {
         display: flex !important;
         flex-direction: row !important;
         justify-content: space-between !important;
         align-items: center !important;
+        flex-wrap: nowrap !important; /* Forces buttons to stay on right */
         padding: 12px 16px !important;
         margin-bottom: 8px !important;
         background: var(--card-bg) !important;
@@ -347,13 +333,30 @@ input[type="number"] {
         border: 1px solid var(--border-color) !important;
         box-shadow: 0 2px 4px var(--shadow-base) !important;
     }
-    #category-table-body td {
+    
+    /* Category Name (Wraps text dynamically) */
+    #category-table-body td:first-child { 
         display: block !important;
+        flex: 1;
+        font-weight: 600; 
+        font-size: 15px; 
+        color: var(--text-main); 
+        word-wrap: break-word;
+        white-space: normal;
+        padding: 0 !important;
+        padding-right: 15px !important;
+        border: none !important;
+    }
+
+    /* Action Buttons (Always on the right) */
+    #category-table-body td:last-child {
+        display: flex !important;
+        flex-direction: row !important;
+        gap: 8px;
+        flex-shrink: 0;
         padding: 0 !important;
         border: none !important;
-        width: auto !important;
     }
-    /* Hides the clunky mobile labels like "Action:" */
+    
     #category-table-body td::before { display: none !important; } 
-    #category-table-body td:first-child { font-weight: 600; font-size: 15px; color: var(--text-main); }
 }
