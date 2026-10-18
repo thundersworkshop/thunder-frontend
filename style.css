@@ -159,7 +159,6 @@ tfoot td { position: sticky; bottom: 0; background: var(--card-bg); z-index: 10;
     
     td[data-label="Particulars"], td[data-label="Received From"], td[data-label="Original Details"] { font-size: 14px; font-weight: 700; width: 50%; order: 1; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     
-    /* Removed forced color so JS can dynamically handle text color */
     td[data-label="Amount"] { font-size: 15px; font-weight: 800; width: 45%; text-align: right; order: 2; display: flex; justify-content: flex-end; align-items: center; gap: 4px; margin-left: auto; }
     
     td[data-label="Date"], td[data-label="Log Date"] { width: 40%; order: 3; font-size: 12px; color: var(--text-sub); }
@@ -168,6 +167,7 @@ tfoot td { position: sticky; bottom: 0; background: var(--card-bg); z-index: 10;
     td[data-label="Note"] { width: 100%; order: 6; font-size: 12px; color: var(--text-sub); font-style: italic; margin-top: 4px; }
     
     td[data-label="Action"] { width: 100%; order: 7; display: flex; flex-direction: row; flex-wrap: wrap; gap: 8px; margin-top: 10px; padding-top: 12px; border-top: 1px dashed var(--border-color); }
+    
     .edit-btn, .del-btn { flex: 1; margin: 0 !important; padding: 10px !important; font-size: 13px; border-radius: 8px; text-align: center;}
     td[data-label="Amount"] span { padding: 1px 4px !important; font-size: 9px !important; border-radius: 3px !important; }
 }
@@ -308,11 +308,10 @@ input[type="number"] {
     100% { transform: scale(1); opacity: 1; }
 }
 
-/* --- FIX: PERFECT HORIZONTAL CATEGORY LAYOUT --- */
+/* --- CATEGORY DESKTOP (TABLE) & MOBILE (CARD) LAYOUT --- */
 #category-table-body { display: table-row-group !important; }
 #category-table-body tr { display: table-row !important; background: transparent !important; border: none !important; box-shadow: none !important; }
 
-/* Desktop: Standard cells for text */
 #category-table-body td { 
     display: table-cell !important; 
     padding: 12px 16px !important; 
@@ -321,7 +320,6 @@ input[type="number"] {
     vertical-align: middle !important;
 }
 
-/* Desktop FIX: Force the Action column to be a horizontal flexbox */
 #category-table-body td:last-child {
     display: flex !important;
     flex-direction: row !important;
@@ -330,7 +328,6 @@ input[type="number"] {
     gap: 8px !important;
 }
 
-/* FIX: Force category buttons to be identical in size */
 #category-table-body .secondary-btn,
 #category-table-body .del-btn {
     flex: 0 0 auto !important;
@@ -343,43 +340,49 @@ input[type="number"] {
 }
 
 @media (max-width: 768px) {
+    /* Convert to beautiful mobile cards */
     #category-table-body tr {
         display: flex !important;
-        flex-direction: row !important;
-        justify-content: space-between !important;
-        align-items: center !important;
-        flex-wrap: nowrap !important;
-        padding: 12px 16px !important;
-        margin-bottom: 8px !important;
+        flex-direction: column !important;
+        padding: 15px !important;
+        margin-bottom: 12px !important;
         background: var(--card-bg) !important;
-        border-radius: 8px !important;
+        border-radius: 12px !important;
         border: 1px solid var(--border-color) !important;
-        box-shadow: 0 2px 4px var(--shadow-base) !important;
+        box-shadow: 0 2px 6px var(--shadow-base) !important;
+        align-items: flex-start !important; /* Align text to the left */
     }
     
-    /* FIX: Force text container to take exactly 100% of remaining space, preventing vertical stacking */
     #category-table-body td:first-child { 
         display: block !important;
-        flex: 1 1 100% !important;
-        width: 100% !important; 
-        font-weight: 600 !important; 
-        font-size: 15px !important; 
+        width: 100% !important;
+        font-weight: 700 !important; 
+        font-size: 16px !important; 
         color: var(--text-main) !important; 
-        white-space: normal !important;
-        word-wrap: break-word !important;
         padding: 0 !important;
-        padding-right: 15px !important;
+        margin-bottom: 15px !important;
         border: none !important;
+        text-align: left !important;
     }
 
-    /* FIX: Force button container to never shrink */
     #category-table-body td:last-child {
         display: flex !important;
         flex-direction: row !important;
-        gap: 8px !important;
-        flex: 0 0 auto !important; 
-        padding: 0 !important;
+        gap: 10px !important;
+        width: 100% !important;
+        padding: 15px 0 0 0 !important;
         border: none !important;
+        border-top: 1px dashed var(--border-color) !important;
+        justify-content: space-between !important;
+    }
+    
+    #category-table-body .secondary-btn,
+    #category-table-body .del-btn {
+        flex: 1 !important; /* Makes both buttons big, equal, and easy to tap */
+        margin: 0 !important;
+        padding: 10px !important;
+        font-size: 13px !important;
+        border-radius: 8px !important;
     }
     
     #category-table-body td::before { display: none !important; } 
