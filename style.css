@@ -311,6 +311,8 @@ input[type="number"] {
 /* --- FIX: PERFECT HORIZONTAL CATEGORY LAYOUT --- */
 #category-table-body { display: table-row-group !important; }
 #category-table-body tr { display: table-row !important; background: transparent !important; border: none !important; box-shadow: none !important; }
+
+/* Desktop: Standard cells for text */
 #category-table-body td { 
     display: table-cell !important; 
     padding: 12px 16px !important; 
@@ -319,13 +321,22 @@ input[type="number"] {
     vertical-align: middle !important;
 }
 
+/* Desktop FIX: Force the Action column to be a horizontal flexbox */
+#category-table-body td:last-child {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 8px !important;
+}
+
 @media (max-width: 768px) {
     #category-table-body tr {
         display: flex !important;
         flex-direction: row !important;
         justify-content: space-between !important;
         align-items: center !important;
-        flex-wrap: nowrap !important; /* Forces buttons to stay on right */
+        flex-wrap: nowrap !important;
         padding: 12px 16px !important;
         margin-bottom: 8px !important;
         background: var(--card-bg) !important;
@@ -334,7 +345,6 @@ input[type="number"] {
         box-shadow: 0 2px 4px var(--shadow-base) !important;
     }
     
-    /* Category Name (Wraps text dynamically) */
     #category-table-body td:first-child { 
         display: block !important;
         flex: 1;
@@ -348,11 +358,10 @@ input[type="number"] {
         border: none !important;
     }
 
-    /* Action Buttons (Always on the right) */
     #category-table-body td:last-child {
         display: flex !important;
         flex-direction: row !important;
-        gap: 8px;
+        gap: 8px !important;
         flex-shrink: 0;
         padding: 0 !important;
         border: none !important;
