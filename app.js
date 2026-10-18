@@ -69,11 +69,10 @@ function resetLogoutTimer() {
                 alert("For your security, you have been automatically logged out due to 5 minutes of inactivity.");
                 window.location.reload();
             });
-        }, 5 * 60 * 1000); // 5 minutes in milliseconds
+        }, 5 * 60 * 1000); // 5 minutes
     }
 }
 
-// Track user activity to reset the timer
 ['mousemove', 'keydown', 'scroll', 'click', 'touchstart'].forEach(evt => {
     window.addEventListener(evt, resetLogoutTimer);
 });
@@ -217,7 +216,7 @@ window.saveWeekStartDay = async function() {
 
 async function loadData() {
     enforceDateRules(); 
-    resetLogoutTimer(); // Initialize timer when data loads
+    resetLogoutTimer(); 
     
     const statusEl = document.getElementById('server-status');
     if (statusEl) {
@@ -367,7 +366,7 @@ function renderDashboard() {
         options: { responsive: true, maintainAspectRatio: false, resizeDelay: 200, plugins: { legend: { position: 'right', labels: { boxWidth: 10, font: { family: 'Poppins', size: 10 } } } } }
     });
 
-    // FIX: 6-Month Cash Flow Timezone Bug Fixed
+    // FIX: 6-Month Cash Flow Timezone Mapping
     let flowData = {};
     for (let i = 5; i >= 0; i--) {
         let d = new Date(today.getFullYear(), today.getMonth() - i, 1);
@@ -539,7 +538,7 @@ window.exportTabToPDF = function() {
     if(view === 'This Month' || view === 'Category Month') {
         periodText = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
     }
-    if(sub) periodText += ` | sub`;
+    if(sub) periodText += ` | ${sub}`;
     if(activeTab === 'search-section' || activeTab === 'audit-section') periodText = 'Custom Query';
 
     doc.setFontSize(20);
@@ -730,8 +729,8 @@ function renderTables(transactions, auditLogs, activeTab) {
 
         if (activeTab === 'expense-section' && t.type === 'Expense') {
             expenseTotal += amt;
-            // FIX: Expenses have no forced color logic
-            document.getElementById('expense-table-body').innerHTML += `<tr><td data-label="Date">${t.date}</td><td data-label="Particulars">${t.particulars}</td><td data-label="Category">${t.category || '-'}</td><td data-label="Account">${t.account}</td><td data-label="Amount">₹${t.amount}</td><td data-label="Note">${displayNote}</td><td data-label="Action">${actionCell}</td></tr>`;
+            // FIX: Removed forced color logic so text stays standard black (or white in dark mode)
+            document.getElementById('expense-table-body').innerHTML += `<tr><td data-label="Date">${t.date}</td><td data-label="Particulars">${t.particulars}</td><td data-label="Category">${t.category || '-'}</td><td data-label="Account">${t.account}</td><td data-label="Amount" style="font-weight: bold;">₹${t.amount}</td><td data-label="Note">${displayNote}</td><td data-label="Action">${actionCell}</td></tr>`;
         }
         
         if (activeTab === 'cash-section' && (t.account === 'Cash' || t.type === 'Contra' || t.type === 'Payment')) {
@@ -740,7 +739,7 @@ function renderTables(transactions, auditLogs, activeTab) {
             if (t.type === 'Contra' && t.account === 'Bank Account') isCashIncrease = true; 
             if (isCashIncrease) cashIn += amt; else cashOut += amt;
 
-            // FIX: Explicitly coloring ONLY the statement amounts dynamically
+            // FIX: Dynamic colors only apply to the Cash Statement amounts
             let amtStyle = isCashIncrease ? 'color: #10b981;' : 'color: #ef4444;';
             const inOutBadge = isCashIncrease 
                 ? `<span style="background-color: rgba(16, 185, 129, 0.2); color: #059669; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-left: 8px;">IN</span>`
@@ -755,7 +754,7 @@ function renderTables(transactions, auditLogs, activeTab) {
             if (t.type === 'Contra' && t.account === 'Cash') isBankIncrease = true; 
             if (isBankIncrease) bankIn += amt; else bankOut += amt;
 
-            // FIX: Explicitly coloring ONLY the statement amounts dynamically
+            // FIX: Dynamic colors only apply to the Bank Statement amounts
             let bankAmtStyle = isBankIncrease ? 'color: #10b981;' : 'color: #ef4444;';
             const drCrBadge = isBankIncrease 
                 ? `<span style="background-color: rgba(16, 185, 129, 0.2); color: #059669; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-left: 8px;">CR.</span>`
@@ -947,12 +946,13 @@ function renderCategories(categories) {
         categoryTable.innerHTML = '';
         categories.forEach(cat => {
             if(cat && cat.name) {
-                const editBtn = `<button class="secondary-btn" style="margin: 0; padding: 6px 14px; font-size: 12px; height: auto;" onclick="editCategory('${cat._id}', '${cat.name}')">Edit</button>`;
-                const delBtn = `<button class="del-btn" style="margin: 0; padding: 6px 14px; font-size: 12px; height: auto;" onclick="deleteCategory('${cat._id}')">Delete</button>`;
+                // FIX: Edit button comes first, Delete button second. Formatted to sit perfectly in the new Flex layout.
+                const editBtn = `<button class="secondary-btn" onclick="editCategory('${cat._id}', '${cat.name}')">Edit</button>`;
+                const delBtn = `<button class="del-btn" onclick="deleteCategory('${cat._id}')">Delete</button>`;
                 
                 categoryTable.innerHTML += `<tr>
-                    <td data-label="Category" style="flex: 1; word-wrap: break-word; white-space: normal; padding-right: 15px;">${cat.name}</td>
-                    <td data-label="Action" style="display: flex; gap: 8px; justify-content: flex-end; flex-shrink: 0;">${editBtn}${delBtn}</td>
+                    <td data-label="Category">${cat.name}</td>
+                    <td data-label="Action">${editBtn}${delBtn}</td>
                 </tr>`;
             }
         });

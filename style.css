@@ -159,7 +159,6 @@ tfoot td { position: sticky; bottom: 0; background: var(--card-bg); z-index: 10;
     
     td[data-label="Particulars"], td[data-label="Received From"], td[data-label="Original Details"] { font-size: 14px; font-weight: 700; width: 50%; order: 1; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     
-    /* Removed forced color so JS can dynamically handle text color */
     td[data-label="Amount"] { font-size: 15px; font-weight: 800; width: 45%; text-align: right; order: 2; display: flex; justify-content: flex-end; align-items: center; gap: 4px; margin-left: auto; }
     
     td[data-label="Date"], td[data-label="Log Date"] { width: 40%; order: 3; font-size: 12px; color: var(--text-sub); }
@@ -168,6 +167,8 @@ tfoot td { position: sticky; bottom: 0; background: var(--card-bg); z-index: 10;
     td[data-label="Note"] { width: 100%; order: 6; font-size: 12px; color: var(--text-sub); font-style: italic; margin-top: 4px; }
     
     td[data-label="Action"] { width: 100%; order: 7; display: flex; flex-direction: row; flex-wrap: wrap; gap: 8px; margin-top: 10px; padding-top: 12px; border-top: 1px dashed var(--border-color); }
+    
+    /* Standard ledger buttons */
     .edit-btn, .del-btn { flex: 1; margin: 0 !important; padding: 10px !important; font-size: 13px; border-radius: 8px; text-align: center;}
     td[data-label="Amount"] span { padding: 1px 4px !important; font-size: 9px !important; border-radius: 3px !important; }
 }
@@ -330,6 +331,18 @@ input[type="number"] {
     gap: 8px !important;
 }
 
+/* FIX: Force category buttons to be identical in size (stops the Delete button from stretching) */
+#category-table-body .secondary-btn,
+#category-table-body .del-btn {
+    flex: 0 0 auto !important;
+    width: auto !important;
+    padding: 6px 14px !important;
+    font-size: 12px !important;
+    border-radius: 6px !important;
+    margin: 0 !important;
+    text-align: center !important;
+}
+
 @media (max-width: 768px) {
     #category-table-body tr {
         display: flex !important;
@@ -345,11 +358,10 @@ input[type="number"] {
         box-shadow: 0 2px 4px var(--shadow-base) !important;
     }
     
-    /* FIX: Solid min-width prevents text from squishing into a vertical line */
     #category-table-body td:first-child { 
         display: block !important;
         flex: 1 1 auto !important;
-        min-width: 50% !important; /* Forces the text container to hold its shape */
+        min-width: 0 !important; /* Critical: allows flex child to shrink and wrap long text without pushing buttons */
         font-weight: 600 !important; 
         font-size: 15px !important; 
         color: var(--text-main) !important; 
@@ -365,7 +377,7 @@ input[type="number"] {
         display: flex !important;
         flex-direction: row !important;
         gap: 8px !important;
-        flex-shrink: 0 !important;
+        flex-shrink: 0 !important; /* Prevents buttons from being squished */
         padding: 0 !important;
         border: none !important;
     }
