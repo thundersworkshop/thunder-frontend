@@ -324,7 +324,6 @@ function calculateBalances(transactions, settings) {
     const cashEl = document.getElementById('live-cash') || document.getElementById('dash-cash');
     const bankEl = document.getElementById('live-bank') || document.getElementById('dash-bank');
 
-    // FIX: Removed the JS '₹' symbol so it doesn't double-stack with your HTML's symbol
     if (cashEl) cashEl.innerText = currentCash.toLocaleString('en-IN');
     if (bankEl) bankEl.innerText = currentBank.toLocaleString('en-IN');
 }
@@ -982,11 +981,22 @@ window.editCategory = async function(id, oldName) {
     }
 }
 
+// FIX: Catch the deletion error from the server and display the warning
 window.deleteCategory = async function(id) {
     if (await customConfirm("Are you sure you want to delete this category?")) { 
-        await fetch(`${API_URL}/categories/${id}`, { method: 'DELETE', headers: getAuthHeaders() }); 
-        loadData(); 
-        customAlert("Category deleted.", "success");
+        try {
+            const res = await fetch(`${API_URL}/categories/${id}`, { method: 'DELETE', headers: getAuthHeaders() }); 
+            const data = await res.json();
+            
+            if (!res.ok) {
+                return customAlert(data.error || "Failed to delete category.", "error");
+            }
+            
+            loadData(); 
+            customAlert("Category deleted.", "success");
+        } catch (e) {
+            customAlert("Network error.", "error");
+        }
     }
 }
 

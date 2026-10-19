@@ -319,23 +319,22 @@ input[type="number"] {
     vertical-align: middle !important;
 }
 
+/* Desktop FIX: Remove flex from TD, use standard table alignment to prevent vertical bleeding */
 #category-table-body td:last-child {
-    display: flex !important;
-    flex-direction: row !important;
-    align-items: center !important;
-    justify-content: flex-end !important;
-    gap: 8px !important;
+    text-align: right !important;
+    white-space: nowrap !important;
 }
 
 #category-table-body .secondary-btn,
 #category-table-body .del-btn {
-    flex: 0 0 auto !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
     width: auto !important;
     padding: 6px 14px !important;
     font-size: 12px !important;
     border-radius: 6px !important;
-    margin: 0 !important;
-    text-align: center !important;
+    margin: 0 0 0 8px !important; /* Space between buttons on desktop */
 }
 
 @media (max-width: 768px) {
@@ -370,6 +369,8 @@ input[type="number"] {
         border: none !important;
         text-align: left !important;
         box-sizing: border-box !important;
+        word-wrap: break-word !important;
+        white-space: normal !important;
     }
 
     #category-table-body td:last-child {
