@@ -69,7 +69,7 @@ function resetLogoutTimer() {
                 alert("For your security, you have been automatically logged out due to 5 minutes of inactivity.");
                 window.location.reload();
             });
-        }, 5 * 60 * 1000); // 5 minutes
+        }, 5 * 60 * 1000); // 5 minutes in milliseconds
     }
 }
 
@@ -270,7 +270,7 @@ async function loadData() {
         try {
             const activeTab = document.querySelector('.tab-content.active');
             if (activeTab && activeTab.id === 'search-section') {
-                runUniversalSearch(); // Refreshes Search if you edit/delete from there
+                runUniversalSearch();
             } else if (activeTab && activeTab.id !== 'dashboard-section') {
                 processAndRenderTables();
             }
@@ -324,8 +324,9 @@ function calculateBalances(transactions, settings) {
     const cashEl = document.getElementById('live-cash') || document.getElementById('dash-cash');
     const bankEl = document.getElementById('live-bank') || document.getElementById('dash-bank');
 
-    if (cashEl) cashEl.innerText = '₹' + currentCash.toLocaleString('en-IN');
-    if (bankEl) bankEl.innerText = '₹' + currentBank.toLocaleString('en-IN');
+    // FIX: Removed the JS '₹' symbol so it doesn't double-stack with your HTML's symbol
+    if (cashEl) cashEl.innerText = currentCash.toLocaleString('en-IN');
+    if (bankEl) bankEl.innerText = currentBank.toLocaleString('en-IN');
 }
 
 function renderDashboard() {
@@ -369,7 +370,6 @@ function renderDashboard() {
         options: { responsive: true, maintainAspectRatio: false, resizeDelay: 200, plugins: { legend: { position: 'right', labels: { boxWidth: 10, font: { family: 'Poppins', size: 10 } } } } }
     });
 
-    // FIX: 6-Month Cash Flow Timezone Mapping
     let flowData = {};
     for (let i = 5; i >= 0; i--) {
         let d = new Date(today.getFullYear(), today.getMonth() - i, 1);
@@ -732,7 +732,6 @@ function renderTables(transactions, auditLogs, activeTab) {
 
         if (activeTab === 'expense-section' && t.type === 'Expense') {
             expenseTotal += amt;
-            // FIX: Removed forced color logic so text stays standard black (or white in dark mode)
             document.getElementById('expense-table-body').innerHTML += `<tr><td data-label="Date">${t.date}</td><td data-label="Particulars">${t.particulars}</td><td data-label="Category">${t.category || '-'}</td><td data-label="Account">${t.account}</td><td data-label="Amount" style="font-weight: bold;">₹${t.amount}</td><td data-label="Note">${displayNote}</td><td data-label="Action">${actionCell}</td></tr>`;
         }
         
@@ -742,7 +741,6 @@ function renderTables(transactions, auditLogs, activeTab) {
             if (t.type === 'Contra' && t.account === 'Bank Account') isCashIncrease = true; 
             if (isCashIncrease) cashIn += amt; else cashOut += amt;
 
-            // FIX: Dynamic colors only apply to the Cash Statement amounts
             let amtStyle = isCashIncrease ? 'color: #10b981;' : 'color: #ef4444;';
             const inOutBadge = isCashIncrease 
                 ? `<span style="background-color: rgba(16, 185, 129, 0.2); color: #059669; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-left: 8px;">IN</span>`
@@ -757,7 +755,6 @@ function renderTables(transactions, auditLogs, activeTab) {
             if (t.type === 'Contra' && t.account === 'Cash') isBankIncrease = true; 
             if (isBankIncrease) bankIn += amt; else bankOut += amt;
 
-            // FIX: Dynamic colors only apply to the Bank Statement amounts
             let bankAmtStyle = isBankIncrease ? 'color: #10b981;' : 'color: #ef4444;';
             const drCrBadge = isBankIncrease 
                 ? `<span style="background-color: rgba(16, 185, 129, 0.2); color: #059669; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-left: 8px;">CR.</span>`
@@ -949,7 +946,6 @@ function renderCategories(categories) {
         categoryTable.innerHTML = '';
         categories.forEach(cat => {
             if(cat && cat.name) {
-                // FIX: Edit button comes first, Delete button second. Formatted to sit perfectly in the new Flex layout.
                 const editBtn = `<button class="secondary-btn" onclick="editCategory('${cat._id}', '${cat.name}')">Edit</button>`;
                 const delBtn = `<button class="del-btn" onclick="deleteCategory('${cat._id}')">Delete</button>`;
                 
@@ -1338,10 +1334,8 @@ if (formSignup) {
             document.getElementById('form-signup').reset();
             toggleAuth('login');
         } catch (error) {
-            // FIX: The Smart Interceptor - Checks if they are trying to sign up again because they forgot to verify
             if (error.code === 'auth/email-already-in-use') {
                 try {
-                    // Secretly logs them in to check if they are unverified
                     const tempCred = await signInWithEmailAndPassword(auth, email, password);
                     if (!tempCred.user.emailVerified) {
                         await sendEmailVerification(tempCred.user);
@@ -1393,7 +1387,6 @@ if (formLogin) {
         try {
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
             
-            // FIX: If they log in but aren't verified, automatically send a new link!
             if (!userCredential.user.emailVerified) {
                 await sendEmailVerification(userCredential.user);
                 await signOut(auth);
