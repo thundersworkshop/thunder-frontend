@@ -661,13 +661,13 @@
 
                     <div class="form-box">
                         <h2>Editor Credentials</h2>
-                        <form id="editor-creds-form" class="flex-row">
-                            <div class="flex-1"><label style="margin-top:0;">Username</label><input type="text"
-                                    id="set-editor-username" required></div>
-                            <div class="flex-1"><label style="margin-top:0;">Password</label><input type="password"
-                                    id="set-editor-pass" required></div>
-                            <button type="submit" class="action-btn" style="margin: 0;">Save Setup</button>
-                        </form>
+                        <form id="editor-creds-form" class="flex-row" style="align-items: flex-end;">
+    <div class="flex-1">
+        <label for="set-editor-pass">Editor Password</label>
+        <input type="password" id="set-editor-pass" placeholder="Enter password to authorize edits" required>
+    </div>
+    <button type="submit" class="submit-btn">Save Setup</button>
+</form>
                     </div>
 
                     <div class="form-box">
@@ -781,19 +781,15 @@
                     <div style="flex: 1; min-width: 0;"><label style="margin-top:0;">Note</label><input type="text"
                             id="edit-notes"></div>
                 </div>
-                <div
-                    style="background: var(--sidebar-bg); padding: 15px; border-radius: 12px; border: 1px solid var(--border-color);">
-                    <h4 style="margin: 0 0 10px 0; color: var(--input-focus);">Editor Authorization Required</h4>
-                    <div class="flex-row">
-                        <input type="text" id="auth-editor-username" placeholder="Username" class="flex-1" required>
-                        <input type="password" id="auth-editor-pass" placeholder="Password" class="flex-1" required>
-                    </div>
-                </div>
-                <div class="flex-row" style="margin-top: 25px;">
-                    <button type="submit" class="action-btn flex-1" style="margin:0;">Save Changes</button>
-                    <button type="button" class="secondary-btn flex-1" onclick="closeEditModal()"
-                        style="margin:0;">Cancel</button>
-                </div>
+                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--border-color);">
+    <label for="auth-editor-pass" style="color: #ef4444;">Editor Password (Required)</label>
+    <input type="password" id="auth-editor-pass" placeholder="Enter Editor Password" required>
+</div>
+
+<div style="display: flex; gap: 10px; margin-top: 20px;">
+    <button type="submit" class="submit-btn" style="flex: 1;">Update Record</button>
+    <button type="button" class="secondary-btn" onclick="closeEditModal()" style="flex: 1;">Cancel</button>
+</div>
             </form>
         </div>
     </div>
