@@ -73,7 +73,7 @@
                 style="flex: 1 1 350px; background: rgba(16, 185, 129, 0.05); padding: 40px; border-left: 1px solid var(--border-color); display: flex; flex-direction: column; justify-content: center;">
                 <h3
                     style="color: var(--text-main); margin-top: 0; margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
-                    <span style="font-size: 22px;">⚠️️</span> Important Guidelines
+                    <span style="font-size: 22px;">⚠</span> Important Guidelines
                 </h3>
                 <ul
                     style="color: var(--text-sub); font-size: 14px; line-height: 1.6; margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 15px;">
@@ -100,17 +100,13 @@
             const signupBtn = document.getElementById('tab-signup');
 
             if (view === 'login') {
-                // Log In Active
                 loginBtn.className = 'action-btn';
                 loginBtn.style = 'flex: 1; margin: 0; background: #10b981; border: 1px solid #059669; color: white;';
-
                 signupBtn.className = 'secondary-btn';
                 signupBtn.style = 'flex: 1; margin: 0; background: transparent; border: 1px solid #94a3b8; color: var(--text-main);';
             } else {
-                // Sign Up Active
                 signupBtn.className = 'action-btn';
                 signupBtn.style = 'flex: 1; margin: 0; background: #10b981; border: 1px solid #059669; color: white;';
-
                 loginBtn.className = 'secondary-btn';
                 loginBtn.style = 'flex: 1; margin: 0; background: transparent; border: 1px solid #94a3b8; color: var(--text-main);';
             }
@@ -298,7 +294,8 @@
                         <label>Particulars / Name</label><input type="text" id="particulars"
                             placeholder="What is this transaction for?" required>
                         <div class="flex-row">
-                            <div class="flex-1"><label>Amount (₹)</label><input type="number" id="amount"
+                            <!-- FIX: type="text" inputmode="decimal" stops mobile keyboards from pushing text, JS filters the rest -->
+                            <div class="flex-1"><label>Amount (₹)</label><input type="text" inputmode="decimal" id="amount"
                                     placeholder="0" required></div>
                             <div class="flex-1"><label>Account</label><select id="account" required>
                                     <option value="">Select Account...</option>
@@ -562,7 +559,6 @@
                     <div class="form-box" style="flex: 1; min-width: 300px; margin-bottom: 0;">
                         <h4 style="margin-bottom: 15px; color: var(--text-main);">Update Details</h4>
                         <form id="update-profile-form">
-                            <!-- Changed to type="tel" to remove arrows, and removed "required" -->
                             <input type="text" id="update-fullname" placeholder="New Full Name"
                                 style="margin-bottom: 10px;">
                             <input type="tel" id="update-phone" placeholder="New Phone Number"
@@ -674,9 +670,10 @@
                     <div class="form-box">
                         <h2>Master Opening Balances</h2>
                         <form id="balance-form" class="flex-row">
-                            <div class="flex-1"><label style="margin-top:0;">Cash (₹)</label><input type="number"
+                            <!-- FIX: type="text" inputmode="decimal" stops mobile text input -->
+                            <div class="flex-1"><label style="margin-top:0;">Cash (₹)</label><input type="text" inputmode="decimal"
                                     id="opening-cash" required></div>
-                            <div class="flex-1"><label style="margin-top:0;">Bank (₹)</label><input type="number"
+                            <div class="flex-1"><label style="margin-top:0;">Bank (₹)</label><input type="text" inputmode="decimal"
                                     id="opening-bank" required></div>
                             <button type="submit" class="action-btn" style="margin: 0;">Override</button>
                         </form>
@@ -773,9 +770,10 @@
             <input type="text" id="edit-particulars" required>
 
             <div class="flex-row" style="margin-top: 10px;">
+                <!-- FIX: type="text" inputmode="decimal" -->
                 <div class="flex-1">
                     <label for="edit-amount">Amount (₹)</label>
-                    <input type="number" id="edit-amount" min="1" required>
+                    <input type="text" inputmode="decimal" id="edit-amount" placeholder="0" required>
                 </div>
                 <div class="flex-1">
                     <label for="edit-category">Category</label>
@@ -807,7 +805,9 @@
     </div>
 </div>
 
-    <script type="module" src="app.js?v=secure1"></script>
+    <!-- FIX: Here is the Cache Buster that forces your phone to download the new JavaScript -->
+    <script type="module" src="app.js?v=thunder_final_v1"></script>
+    
     <script>
         document.addEventListener("DOMContentLoaded", () => {
             const savedTheme = localStorage.getItem('financeTrackerTheme');
@@ -853,17 +853,13 @@
             }
         }
     </script>
-    <!-- CUSTOM TOAST NOTIFICATION (Replaces Alerts) -->
+    
+    <!-- CUSTOM TOAST NOTIFICATION -->
     <div id="custom-toast" class="toast-hidden">
         <span id="toast-message"></span>
     </div>
 
-    <!-- CUSTOM TOAST NOTIFICATION (Replaces Alerts) -->
-    <div id="custom-toast" class="toast-hidden">
-        <span id="toast-message"></span>
-    </div>
-
-    <!-- CUSTOM CONFIRM MODAL (Replaces Confirms) -->
+    <!-- CUSTOM CONFIRM MODAL -->
     <div id="custom-confirm-modal" class="modal-overlay" style="display: none; z-index: 99999;">
         <div class="modal-content">
             <h3 style="margin-top: 0; color: var(--text-main);">Confirmation Required</h3>

@@ -17,12 +17,11 @@ const auth = getAuth(app);
 const API_URL = 'https://thunder-backend-esf1.onrender.com/api';
 
 // ==========================================
-// CUSTOM UI POPUP ENGINE (With Built-in Fallbacks)
+// CUSTOM UI POPUP ENGINE
 // ==========================================
 window.customAlert = function(message, type = 'info') {
     const toast = document.getElementById('custom-toast');
     const msgEl = document.getElementById('toast-message');
-    // If the custom toast fails or is missing, fall back to a standard browser popup!
     if(!toast || !msgEl) return alert(`[${type.toUpperCase()}] ${message}`); 
     
     toast.className = `toast-visible toast-${type}`;
@@ -58,19 +57,22 @@ window.customConfirm = function(message) {
 };
 
 // ==========================================
-// RUTHLESS INPUT FILTER (Blocks text in number fields)
+// RUTHLESS INPUT FILTER (Blocks text in amount fields)
 // ==========================================
 const blockText = (elementId) => {
     const el = document.getElementById(elementId);
     if(el) {
         el.addEventListener('input', function() {
-            // Instantly deletes anything that isn't a number or a decimal point
-            this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*?)\..*/g, '$1');
+            let val = this.value.replace(/[^0-9.]/g, '');
+            const parts = val.split('.');
+            if(parts.length > 2) {
+                val = parts[0] + '.' + parts.slice(1).join('');
+            }
+            this.value = val;
         });
     }
 };
 
-// Apply the block to all money input fields
 blockText('amount');
 blockText('edit-amount');
 blockText('opening-cash');
@@ -1021,7 +1023,6 @@ window.deleteCategory = async function(id) {
 
 // ==========================================
 // FORM SUBMISSION EVENT LISTENERS
-// Wrapped in try/catch to prevent silent failures
 // ==========================================
 
 const safeSubmit = (formId, asyncLogic) => {
@@ -1176,9 +1177,14 @@ window.deleteEntry = async function(id) {
     if (!isAdminUnlocked) return customAlert("Security Block: Please log in via the Settings tab to delete records.", "error");
     if (await customConfirm("Are you sure you want to move this record to the Audit Trail?")) { 
         customAlert("Deleting...", "info");
-        await fetch(`${API_URL}/transactions/${id}`, { method: 'DELETE', headers: { 'admin-access': 'true', 'Authorization': `Bearer ${currentUserToken}` } }); 
-        loadData();
-        customAlert("Moved to Audit Trail.", "success");
+        try {
+            const res = await fetch(`${API_URL}/transactions/${id}`, { method: 'DELETE', headers: { 'admin-access': 'true', 'Authorization': `Bearer ${currentUserToken}` } }); 
+            if (!res.ok) throw new Error("Failed to delete record.");
+            loadData();
+            customAlert("Moved to Audit Trail.", "success");
+        } catch(e) {
+            customAlert(e.message, "error");
+        }
     }
 }
 
@@ -1548,7 +1554,7 @@ document.getElementById('cancel-clean-btn').addEventListener('click', async () =
 // PROFILE LOGIC
 // ==========================================
 safeSubmit('update-profile-form', async (e) => {
-    const btn = e.target.querySelector('button');
+    const btn = document.getElementById('update-profile-form').querySelector('button');
     const newNameInput = document.getElementById('update-fullname').value.trim();
     const newPhoneInput = document.getElementById('update-phone').value.trim();
     
@@ -1572,7 +1578,7 @@ safeSubmit('change-password-form', async (e) => {
     const oldPass = document.getElementById('old-password').value;
     const newPass = document.getElementById('new-password').value;
     const confirmPass = document.getElementById('confirm-new-password').value;
-    const btn = e.target.querySelector('button');
+    const btn = document.getElementById('change-password-form').querySelector('button');
 
     if (newPass !== confirmPass) throw new Error("New passwords do not match!");
     
@@ -1582,6 +1588,6 @@ safeSubmit('change-password-form', async (e) => {
         await reauthenticateWithCredential(auth.currentUser, credential);
         await updatePassword(auth.currentUser, newPass);
         customAlert("Password updated securely!", "success");
-        e.target.reset();
+        document.getElementById('change-password-form').reset();
     } finally { btn.innerText = "Update Password"; }
 });
