@@ -17,12 +17,13 @@ const auth = getAuth(app);
 const API_URL = 'https://thunder-backend-esf1.onrender.com/api';
 
 // ==========================================
-// CUSTOM UI POPUP ENGINE
+// CUSTOM UI POPUP ENGINE (With Built-in Fallbacks)
 // ==========================================
 window.customAlert = function(message, type = 'info') {
     const toast = document.getElementById('custom-toast');
     const msgEl = document.getElementById('toast-message');
-    if(!toast || !msgEl) return console.log(message); 
+    // If the custom toast fails or is missing, fall back to a standard browser popup!
+    if(!toast || !msgEl) return alert(`[${type.toUpperCase()}] ${message}`); 
     
     toast.className = `toast-visible toast-${type}`;
     msgEl.innerHTML = message;
@@ -57,6 +58,26 @@ window.customConfirm = function(message) {
 };
 
 // ==========================================
+// RUTHLESS INPUT FILTER (Blocks text in number fields)
+// ==========================================
+const blockText = (elementId) => {
+    const el = document.getElementById(elementId);
+    if(el) {
+        el.addEventListener('input', function() {
+            // Instantly deletes anything that isn't a number or a decimal point
+            this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*?)\..*/g, '$1');
+        });
+    }
+};
+
+// Apply the block to all money input fields
+blockText('amount');
+blockText('edit-amount');
+blockText('opening-cash');
+blockText('opening-bank');
+
+
+// ==========================================
 // AUTO-LOGOUT & GLOBAL INACTIVITY TIMER
 // ==========================================
 let logoutTimer;
@@ -69,7 +90,7 @@ function resetLogoutTimer() {
                 alert("For your security, you have been automatically logged out due to 5 minutes of inactivity.");
                 window.location.reload();
             });
-        }, 5 * 60 * 1000); // 5 minutes in milliseconds
+        }, 5 * 60 * 1000); 
     }
 }
 
@@ -249,8 +270,7 @@ async function loadData() {
 
             if (document.getElementById('opening-cash')) document.getElementById('opening-cash').value = settings.openingCash || 0;
             if (document.getElementById('opening-bank')) document.getElementById('opening-bank').value = settings.openingBank || 0;
-            if (settings.editorUsername && document.getElementById('set-editor-username')) document.getElementById('set-editor-username').value = settings.editorUsername;
-            if (settings.editorPassword && document.getElementById('set-editor-pass')) document.getElementById('set-editor-pass').value = settings.editorPassword;
+            
         } catch(e) { console.warn("Settings UI Error:", e); }
         
         if (settings.deletionTimerStart) {
@@ -981,7 +1001,6 @@ window.editCategory = async function(id, oldName) {
     }
 }
 
-// FIX: Catch the deletion error from the server and display the warning
 window.deleteCategory = async function(id) {
     if (await customConfirm("Are you sure you want to delete this category?")) { 
         try {
@@ -1000,21 +1019,42 @@ window.deleteCategory = async function(id) {
     }
 }
 
-document.getElementById('entry-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
+// ==========================================
+// FORM SUBMISSION EVENT LISTENERS
+// Wrapped in try/catch to prevent silent failures
+// ==========================================
+
+const safeSubmit = (formId, asyncLogic) => {
+    const form = document.getElementById(formId);
+    if(form) {
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            try {
+                await asyncLogic(e);
+            } catch (err) {
+                customAlert(`Error: ${err.message}`, "error");
+            }
+        });
+    }
+};
+
+safeSubmit('entry-form', async () => {
     const localDate = enforceDateRules();
-    if (document.getElementById('date').value > localDate) return customAlert("Future/post-dated transactions are not allowed!", "error");
+    if (document.getElementById('date').value > localDate) throw new Error("Future/post-dated transactions are not allowed!");
 
     let recordedByName = 'System';
     if (auth.currentUser && auth.currentUser.displayName) {
         recordedByName = auth.currentUser.displayName.split(' | ')[0];
     }
 
+    const newAmount = Number(document.getElementById('amount').value);
+    if(isNaN(newAmount) || newAmount <= 0) throw new Error("Please enter a valid amount.");
+
     const newEntry = {
         date: document.getElementById('date').value,
         type: document.getElementById('type').value,
         particulars: document.getElementById('particulars').value,
-        amount: Number(document.getElementById('amount').value),
+        amount: newAmount,
         category: document.getElementById('category').value,
         account: document.getElementById('account').value,
         notes: document.getElementById('notes').value,
@@ -1023,19 +1063,17 @@ document.getElementById('entry-form').addEventListener('submit', async (e) => {
     
     customAlert("Saving transaction...", "info");
     
-    try {
-        await fetch(`${API_URL}/transactions`, { method: 'POST', headers: getAuthHeaders(true), body: JSON.stringify(newEntry) });
-        document.getElementById('entry-form').reset();
-        
-        const catSelect = document.getElementById('category');
-        catSelect.disabled = false;
-        catSelect.required = true;
-        enforceDateRules(); 
-        await loadData();
-        customAlert("Transaction added successfully!", "success");
-    } catch(e) {
-        customAlert("Failed to save transaction.", "error");
-    }
+    const res = await fetch(`${API_URL}/transactions`, { method: 'POST', headers: getAuthHeaders(true), body: JSON.stringify(newEntry) });
+    if(!res.ok) throw new Error("Failed to save to server.");
+    
+    document.getElementById('entry-form').reset();
+    
+    const catSelect = document.getElementById('category');
+    catSelect.disabled = false;
+    catSelect.required = true;
+    enforceDateRules(); 
+    await loadData();
+    customAlert("Transaction added successfully!", "success");
 });
 
 window.openEditModal = function(id, date, type, particulars, amount, category, account, notes, recordedBy) {
@@ -1063,17 +1101,15 @@ window.openEditModal = function(id, date, type, particulars, amount, category, a
 window.closeEditModal = function() {
     document.getElementById('edit-modal').style.display = 'none';
     document.getElementById('edit-form').reset();
-    document.getElementById('auth-editor-username').value = '';
-    document.getElementById('auth-editor-pass').value = '';
+    const editPassInput = document.getElementById('auth-editor-pass');
+    if (editPassInput) editPassInput.value = '';
 }
 
-document.getElementById('edit-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
+safeSubmit('edit-form', async () => {
     const localDate = enforceDateRules();
-    if (document.getElementById('edit-date').value > localDate) return customAlert("Future/post-dated transactions are not allowed!", "error");
+    if (document.getElementById('edit-date').value > localDate) throw new Error("Future/post-dated transactions are not allowed!");
 
     const id = document.getElementById('edit-id').value;
-    
     const newDate = document.getElementById('edit-date').value;
     const newType = document.getElementById('edit-type').value;
     const newParticulars = document.getElementById('edit-particulars').value.trim();
@@ -1082,11 +1118,12 @@ document.getElementById('edit-form').addEventListener('submit', async (e) => {
     const newAccount = document.getElementById('edit-account').value;
     const newNotes = document.getElementById('edit-notes').value.trim();
 
+    if(isNaN(newAmount) || newAmount <= 0) throw new Error("Please enter a valid numeric amount.");
+
     const oldTx = masterTransactions.find(t => t._id === id);
     if (oldTx) {
         const oldNotes = oldTx.notes || '';
         const oldCategory = oldTx.category || '';
-        
         if (oldTx.date === newDate && oldTx.type === newType && oldTx.particulars === newParticulars && Number(oldTx.amount) === newAmount && oldCategory === newCategory && oldTx.account === newAccount && oldNotes === newNotes) {
             return customAlert("No changes detected. Modify at least one field to save.", "warning");
         }
@@ -1098,42 +1135,41 @@ document.getElementById('edit-form').addEventListener('submit', async (e) => {
     }
 
     const updatedData = {
-        date: newDate,
-        type: newType,
-        particulars: newParticulars,
-        amount: newAmount,
-        category: newCategory,
-        account: newAccount,
-        notes: newNotes,
-        recordedBy: recordedByName 
+        date: newDate, type: newType, particulars: newParticulars,
+        amount: newAmount, category: newCategory, account: newAccount,
+        notes: newNotes, recordedBy: recordedByName 
     };
     
-    const editorUsername = document.getElementById('auth-editor-username').value.trim();
     const editorPassword = document.getElementById('auth-editor-pass').value.trim();
+    if(!editorPassword) throw new Error("Editor Password is required.");
     
     customAlert("Updating record...", "info");
     const res = await fetch(`${API_URL}/transactions/${id}`, { 
-        method: 'PUT', 
-        headers: getAuthHeaders(true), 
-        body: JSON.stringify({ editorUsername, editorPassword, updatedData }) 
+        method: 'PUT', headers: getAuthHeaders(true), body: JSON.stringify({ editorPassword, updatedData }) 
     });
     
-    const data = await res.json();
+    let data;
+    try { data = await res.json(); } catch(e) { throw new Error("Server returned an invalid response."); }
+
     if (res.ok) { 
         customAlert("Transaction updated successfully!", "success"); 
         closeEditModal(); 
         loadData(); 
     } else { 
-        customAlert("Error: " + (data.error || "Authentication failed"), "error"); 
+        throw new Error(data.error || "Authentication failed. Did you save your Editor Password?"); 
     }
 });
 
-document.getElementById('editor-creds-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const editorUsername = document.getElementById('set-editor-username').value.trim();
+safeSubmit('editor-creds-form', async () => {
     const editorPassword = document.getElementById('set-editor-pass').value.trim();
-    await fetch(`${API_URL}/settings`, { method: 'POST', headers: getAuthHeaders(true), body: JSON.stringify({ editorUsername, editorPassword }) });
-    customAlert("Editor Credentials Saved Successfully!", "success");
+    if(!editorPassword) throw new Error("Please enter a password.");
+
+    const res = await fetch(`${API_URL}/settings`, { 
+        method: 'POST', headers: getAuthHeaders(true), body: JSON.stringify({ editorPassword }) 
+    });
+    
+    if(!res.ok) throw new Error("Failed to save password to server.");
+    customAlert("Editor Password Saved Successfully!", "success");
 });
 
 window.deleteEntry = async function(id) {
@@ -1155,7 +1191,6 @@ window.restoreEntry = async function(logId) {
     const old = log.originalData;
     const txId = log.transactionId || old._id; 
     
-    const editorUsername = document.getElementById('set-editor-username').value;
     const editorPassword = document.getElementById('set-editor-pass').value;
 
     customAlert("Restoring...", "info");
@@ -1168,16 +1203,11 @@ window.restoreEntry = async function(logId) {
                 method: 'PUT',
                 headers: getAuthHeaders(true),
                 body: JSON.stringify({ 
-                    editorUsername: editorUsername, 
                     editorPassword: editorPassword, 
                     updatedData: {
-                        date: old.date,
-                        type: old.type,
-                        particulars: old.particulars,
-                        amount: Number(old.amount),
-                        category: old.category,
-                        account: old.account,
-                        notes: old.notes
+                        date: old.date, type: old.type, particulars: old.particulars,
+                        amount: Number(old.amount), category: old.category,
+                        account: old.account, notes: old.notes
                     }
                 })
             });
@@ -1189,13 +1219,9 @@ window.restoreEntry = async function(logId) {
                 method: 'POST',
                 headers: getAuthHeaders(true),
                 body: JSON.stringify({
-                    date: old.date,
-                    type: old.type,
-                    particulars: old.particulars,
-                    amount: Number(old.amount),
-                    category: old.category,
-                    account: old.account,
-                    notes: old.notes
+                    date: old.date, type: old.type, particulars: old.particulars,
+                    amount: Number(old.amount), category: old.category,
+                    account: old.account, notes: old.notes
                 })
             });
             const data = await res.json();
@@ -1215,8 +1241,7 @@ window.restoreEntry = async function(logId) {
     }
 };
 
-document.getElementById('category-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
+safeSubmit('category-form', async () => {
     const catNameInput = document.getElementById('new-category-name');
     const catName = catNameInput.value.trim();
     
@@ -1228,29 +1253,30 @@ document.getElementById('category-form').addEventListener('submit', async (e) =>
         });
     }
 
-    if (isDuplicate) return customAlert("Category already exists!", "warning");
+    if (isDuplicate) throw new Error("Category already exists!");
 
     const res = await fetch(`${API_URL}/categories`, { 
-        method: 'POST', 
-        headers: getAuthHeaders(true), 
-        body: JSON.stringify({ name: catName }) 
+        method: 'POST', headers: getAuthHeaders(true), body: JSON.stringify({ name: catName }) 
     });
 
-    if (!res.ok) {
-        const data = await res.json();
-        return customAlert(data.error || "Failed to add category.", "error");
-    }
+    let data;
+    try { data = await res.json(); } catch(e) { throw new Error("Invalid Server Response"); }
+    
+    if (!res.ok) throw new Error(data.error || "Failed to add category.");
 
     catNameInput.value = '';
     await loadData(); 
     customAlert("Category added!", "success");
 });
 
-document.getElementById('balance-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
+safeSubmit('balance-form', async () => {
     const openingCash = Number(document.getElementById('opening-cash').value);
     const openingBank = Number(document.getElementById('opening-bank').value);
-    await fetch(`${API_URL}/settings`, { method: 'POST', headers: getAuthHeaders(true), body: JSON.stringify({ openingCash, openingBank, isAdminOverride: isAdminUnlocked }) });
+    const res = await fetch(`${API_URL}/settings`, { 
+        method: 'POST', headers: getAuthHeaders(true), 
+        body: JSON.stringify({ openingCash, openingBank, isAdminOverride: isAdminUnlocked }) 
+    });
+    if(!res.ok) throw new Error("Failed to save balances.");
     loadData(); 
     customAlert("Opening Balances Updated!", "success");
 });
@@ -1276,7 +1302,7 @@ if(document.getElementById('edit-type')) {
 }
 
 // -------------------------------------------------------------
-// FIREBASE AUTHENTICATION LOGIC (With Email Verification Interceptor)
+// FIREBASE AUTHENTICATION LOGIC
 // -------------------------------------------------------------
 
 onAuthStateChanged(auth, async (user) => {
@@ -1366,11 +1392,9 @@ if (formSignup) {
                     return;
                 }
             }
-
             let cleanMessage = "An error occurred. Please try again.";
             if (error.code === 'auth/weak-password') cleanMessage = "Password should be at least 6 characters.";
             if (error.code === 'auth/invalid-email') cleanMessage = "Invalid email format.";
-
             errorEl.innerText = cleanMessage;
             errorEl.style.display = 'block';
         } finally {
@@ -1386,7 +1410,6 @@ if (formLogin) {
         e.preventDefault();
         const email = document.getElementById('login-email').value;
         const password = document.getElementById('login-password').value;
-        
         const btn = document.getElementById('btn-login');
         const errorEl = document.getElementById('error-login');
         
@@ -1396,25 +1419,19 @@ if (formLogin) {
 
         try {
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
-            
             if (!userCredential.user.emailVerified) {
                 await sendEmailVerification(userCredential.user);
                 await signOut(auth);
-                customAlert("🚨 Email not verified. A NEW verification link has been sent to your inbox.", "warning");
+                customAlert("🚨 Email not verified. A NEW link has been sent.", "warning");
                 btn.innerText = "Access Vault";
                 btn.disabled = false;
                 return;
             }
-            
             btn.innerText = "Access Vault";
             btn.disabled = false;
             customAlert("Welcome back!", "success");
         } catch (error) {
-            let cleanMessage = "Incorrect email or password.";
-            if (error.code === 'auth/too-many-requests') cleanMessage = "Too many failed attempts. Try again later.";
-            if (error.code === 'auth/invalid-email') cleanMessage = "Invalid email format.";
-
-            errorEl.innerText = cleanMessage;
+            errorEl.innerText = "Incorrect email or password.";
             errorEl.style.display = 'block';
             btn.innerText = "Access Vault";
             btn.disabled = false;
@@ -1423,49 +1440,41 @@ if (formLogin) {
 }
 
 window.globalLogout = function() {
-    signOut(auth).then(() => {
-        window.location.reload();
-    });
+    signOut(auth).then(() => { window.location.reload(); });
 };
 
-const settingsAuthForm = document.getElementById('settings-auth-form');
-if (settingsAuthForm) {
-    settingsAuthForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const email = document.getElementById('settings-email').value.trim();
-        const pass = document.getElementById('settings-password').value;
-        const errorEl = document.getElementById('settings-auth-error');
-        const btn = settingsAuthForm.querySelector('button');
+safeSubmit('settings-auth-form', async (e) => {
+    const email = document.getElementById('settings-email').value.trim();
+    const pass = document.getElementById('settings-password').value;
+    const errorEl = document.getElementById('settings-auth-error');
+    const btn = document.getElementById('settings-auth-form').querySelector('button');
+    
+    if (auth.currentUser && email.toLowerCase() !== auth.currentUser.email.toLowerCase()) {
+        errorEl.innerText = "Access Denied: Incorrect Email or Password.";
+        errorEl.style.display = 'block';
+        return;
+    }
+    
+    btn.innerText = "Verifying...";
+    errorEl.style.display = 'none';
+    
+    try {
+        await signInWithEmailAndPassword(auth, email, pass);
+        isAdminUnlocked = true;
+        document.getElementById('admin-login-box').style.display = 'none';
+        document.getElementById('admin-zone').style.display = 'block';
+        document.getElementById('audit-tab-btn').style.display = 'inline-block';
         
-        if (auth.currentUser && email.toLowerCase() !== auth.currentUser.email.toLowerCase()) {
-            errorEl.innerText = "Access Denied: Incorrect Email or Password.";
-            errorEl.style.display = 'block';
-            return;
-        }
-        
-        btn.innerText = "Verifying...";
-        errorEl.style.display = 'none';
-        
-        try {
-            await signInWithEmailAndPassword(auth, email, pass);
-            isAdminUnlocked = true;
-            document.getElementById('admin-login-box').style.display = 'none';
-            document.getElementById('admin-zone').style.display = 'block';
-            document.getElementById('audit-tab-btn').style.display = 'inline-block';
-            
-            settingsAuthForm.reset();
-            customAlert("Admin settings unlocked.", "success");
-            
-            processAndRenderTables(); 
-            
-        } catch (error) {
-            errorEl.innerText = "Access Denied: Incorrect Email or Password.";
-            errorEl.style.display = 'block';
-        } finally {
-            btn.innerText = "Unlock Settings";
-        }
-    });
-}
+        document.getElementById('settings-auth-form').reset();
+        customAlert("Admin settings unlocked.", "success");
+        processAndRenderTables(); 
+    } catch (error) {
+        errorEl.innerText = "Access Denied: Incorrect Email or Password.";
+        errorEl.style.display = 'block';
+    } finally {
+        btn.innerText = "Unlock Settings";
+    }
+});
 
 window.logoutAdmin = function() {
     isAdminUnlocked = false;
@@ -1481,86 +1490,53 @@ window.logoutAdmin = function() {
 // ==========================================
 // CRITICAL OPERATIONS
 // ==========================================
-
 function startTimerUI() {
     document.getElementById('initiate-clean-btn').style.display = 'none';
     document.getElementById('deep-clean-confirm-input').disabled = true;
     document.getElementById('timer-container').style.display = 'block';
-    
     updateTimerUI();
-    
     deepCleanTimer = setInterval(() => {
         timeLeft--;
         updateTimerUI();
-        if (timeLeft <= 0) {
-            clearInterval(deepCleanTimer);
-            executeDeepClean();
-        }
+        if (timeLeft <= 0) { clearInterval(deepCleanTimer); executeDeepClean(); }
     }, 1000);
 }
 
 function updateTimerUI() {
     const minutes = Math.floor(timeLeft / 60);
     const seconds = timeLeft % 60;
-    document.getElementById('countdown-display').innerText = 
-        `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    document.getElementById('countdown-display').innerText = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 }
 
 async function executeDeepClean() {
     try {
-        const res = await fetch(`${API_URL}/deep-clean`, {
-            method: 'POST',
-            headers: getAuthHeaders(true),
-            body: JSON.stringify({ userId: auth.currentUser.uid })
-        });
+        const res = await fetch(`${API_URL}/deep-clean`, { method: 'POST', headers: getAuthHeaders(true), body: JSON.stringify({ userId: auth.currentUser.uid }) });
         if(res.ok) {
             customAlert('Your data has been completely wiped.', "success");
             auth.signOut().then(() => location.reload());
         }
-    } catch (err) {
-        console.error('Clean failed:', err);
-    }
+    } catch (err) { console.error('Clean failed:', err); }
 }
 
 document.getElementById('factory-reset-btn').addEventListener('click', async () => {
     const confirmText = document.getElementById('reset-confirm-input').value;
-    if (confirmText !== 'CLEAR-BALANCES') {
-        return customAlert('Please type CLEAR-BALANCES exactly as shown to confirm.', "warning");
-    }
-    
+    if (confirmText !== 'CLEAR-BALANCES') return customAlert('Type CLEAR-BALANCES exactly.', "warning");
     try {
-        const res = await fetch(`${API_URL}/reset-balances`, {
-            method: 'POST',
-            headers: getAuthHeaders(true),
-            body: JSON.stringify({ userId: auth.currentUser.uid })
-        });
-        if(res.ok) {
-            document.getElementById('reset-confirm-input').value = '';
-            location.reload(); 
-        }
-    } catch (err) {
-        console.error('Reset failed:', err);
-    }
+        const res = await fetch(`${API_URL}/reset-balances`, { method: 'POST', headers: getAuthHeaders(true), body: JSON.stringify({ userId: auth.currentUser.uid }) });
+        if(res.ok) { document.getElementById('reset-confirm-input').value = ''; location.reload(); }
+    } catch (err) { console.error('Reset failed:', err); }
 });
 
 document.getElementById('initiate-clean-btn').addEventListener('click', async () => {
     const confirmText = document.getElementById('deep-clean-confirm-input').value;
-    if (confirmText !== 'DELETE-MY-DATA') {
-        return customAlert('Please type DELETE-MY-DATA exactly as shown to confirm.', "warning");
-    }
-    
+    if (confirmText !== 'DELETE-MY-DATA') return customAlert('Type DELETE-MY-DATA exactly.', "warning");
     await fetch(`${API_URL}/schedule-clean`, { method: 'POST', headers: getAuthHeaders() });
-    
-    timeLeft = 3600;
-    startTimerUI();
-    customAlert("Data wipe scheduled.", "info");
+    timeLeft = 3600; startTimerUI(); customAlert("Data wipe scheduled.", "info");
 });
 
 document.getElementById('cancel-clean-btn').addEventListener('click', async () => {
     clearInterval(deepCleanTimer);
-    
     await fetch(`${API_URL}/cancel-clean`, { method: 'POST', headers: getAuthHeaders() });
-    
     document.getElementById('initiate-clean-btn').style.display = 'inline-block';
     document.getElementById('deep-clean-confirm-input').disabled = false;
     document.getElementById('deep-clean-confirm-input').value = '';
@@ -1569,65 +1545,43 @@ document.getElementById('cancel-clean-btn').addEventListener('click', async () =
 });
 
 // ==========================================
-// PROFILE & SECURITY LOGIC
+// PROFILE LOGIC
 // ==========================================
-
-document.getElementById('update-profile-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
+safeSubmit('update-profile-form', async (e) => {
     const btn = e.target.querySelector('button');
-    
     const newNameInput = document.getElementById('update-fullname').value.trim();
     const newPhoneInput = document.getElementById('update-phone').value.trim();
     
-    if (!newNameInput && !newPhoneInput) {
-        return customAlert("Please enter a new name or phone number to update.", "warning");
-    }
+    if (!newNameInput && !newPhoneInput) throw new Error("Enter a new name or phone number.");
 
     btn.innerText = "Saving...";
-
-    let currentUsername = 'User';
-    let currentName = 'N/A';
-    let currentPhone = 'N/A';
-    
+    let currentUsername = 'User', currentName = 'N/A', currentPhone = 'N/A';
     if (auth.currentUser && auth.currentUser.displayName) {
         const parts = auth.currentUser.displayName.split(' | ');
-        currentUsername = parts[0] || 'User';
-        currentName = parts[1] || 'N/A';
-        currentPhone = parts[2] || 'N/A';
+        currentUsername = parts[0] || 'User'; currentName = parts[1] || 'N/A'; currentPhone = parts[2] || 'N/A';
     }
     
     const finalName = newNameInput ? newNameInput : currentName;
     const finalPhone = newPhoneInput ? newPhoneInput : currentPhone;
     
-    try {
-        await updateProfile(auth.currentUser, { displayName: `${currentUsername} | ${finalName} | ${finalPhone}` });
-        location.reload();
-    } catch (error) {
-        customAlert("Failed to update profile: " + error.message, "error");
-        btn.innerText = "Save Details";
-    }
+    await updateProfile(auth.currentUser, { displayName: `${currentUsername} | ${finalName} | ${finalPhone}` });
+    location.reload();
 });
 
-document.getElementById('change-password-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
+safeSubmit('change-password-form', async (e) => {
     const oldPass = document.getElementById('old-password').value;
     const newPass = document.getElementById('new-password').value;
     const confirmPass = document.getElementById('confirm-new-password').value;
     const btn = e.target.querySelector('button');
 
-    if (newPass !== confirmPass) return customAlert("New passwords do not match!", "error");
+    if (newPass !== confirmPass) throw new Error("New passwords do not match!");
     
     btn.innerText = "Verifying...";
     try {
         const credential = EmailAuthProvider.credential(auth.currentUser.email, oldPass);
         await reauthenticateWithCredential(auth.currentUser, credential);
-        
         await updatePassword(auth.currentUser, newPass);
         customAlert("Password updated securely!", "success");
         e.target.reset();
-    } catch (error) {
-        customAlert("Error: " + error.message, "error");
-    } finally {
-        btn.innerText = "Update Password";
-    }
+    } finally { btn.innerText = "Update Password"; }
 });
