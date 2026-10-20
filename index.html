@@ -325,12 +325,12 @@
                                 type="text" id="uni-search" placeholder="Type a name, category, or amount..."></div>
                         <div class="flex-1"><label style="margin-top:0;">Transaction Type:</label>
                             <select id="uni-type">
-    <option value="">All Types</option>
-    <option value="Expense">Expense</option>
-    <option value="Receipt">Receipt</option>
-    <option value="Contra">Contra</option>
-    <option value="Payment">Payment</option>
-</select>
+                                <option value="">All Types</option>
+                                <option value="Expense">Expense</option>
+                                <option value="Receipt">Receipt</option>
+                                <option value="Contra">Contra</option>
+                                <option value="Payment">Payment</option>
+                            </select>
                         </div>
                     </div>
                     <div class="flex-row" style="margin-top: 15px;">
@@ -662,12 +662,13 @@
                     <div class="form-box">
                         <h2>Editor Credentials</h2>
                         <form id="editor-creds-form" class="flex-row" style="align-items: flex-end;">
-    <div class="flex-1">
-        <label for="set-editor-pass">Editor Password</label>
-        <input type="password" id="set-editor-pass" placeholder="Enter password to authorize edits" required>
-    </div>
-    <button type="submit" class="submit-btn">Save Setup</button>
-</form>
+                            <div class="flex-1">
+                                <label for="set-editor-pass">Editor Password</label>
+                                <input type="password" id="set-editor-pass"
+                                    placeholder="Enter password to authorize edits" required>
+                            </div>
+                            <button type="submit" class="submit-btn">Save Setup</button>
+                        </form>
                     </div>
 
                     <div class="form-box">
@@ -746,53 +747,65 @@
     </div>
 
     <!-- COMPACT DESKTOP EDIT TRANSACTION MODAL -->
-    <div id="edit-modal"
-        style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); justify-content: center; align-items: center; z-index: 1000; padding: 20px;">
-        <div class="form-box hide-scrollbar"
-            style="width: 100%; max-width: 850px; box-shadow: 0 25px 50px rgba(0,0,0,0.3); max-height: 95vh; overflow-y: auto; padding: 30px;">
-            <h2 style="margin-bottom: 15px;">✏️ Edit Record</h2>
-            <form id="edit-form">
-                <input type="hidden" id="edit-id">
-                <div class="flex-row" style="margin-bottom: 15px;">
-                    <div class="flex-1"><label style="margin-top:0;">Date</label><input type="date" id="edit-date"
-                            required></div>
-                    <div class="flex-1"><label style="margin-top:0;">Type</label>
-                        <select id="edit-type" required>
-    <option value="Expense">Expense</option>
-    <option value="Receipt">Receipt</option>
-    <option value="Contra">Contra</option>
-    <option value="Payment">Payment</option>
-</select>
-</div>
-                    <div class="flex-1"><label style="margin-top:0;">Account</label><select id="edit-account" required>
-                            <option value="Cash">Cash</option>
-                            <option value="Bank Account">Bank Account</option>
-                        </select></div>
+    <div id="edit-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(4px);">
+    <div class="form-box" style="width: 90%; max-width: 500px; max-height: 90vh; overflow-y: auto;">
+        <h2>Edit Transaction</h2>
+        <form id="edit-form">
+            <input type="hidden" id="edit-id">
+            
+            <div class="flex-row" style="margin-bottom: 10px;">
+                <div class="flex-1">
+                    <label for="edit-date">Date</label>
+                    <input type="date" id="edit-date" required>
                 </div>
-                <div class="flex-row" style="margin-bottom: 15px;">
-                    <div style="flex: 2; min-width: 0;"><label style="margin-top:0;">Particulars</label><input
-                            type="text" id="edit-particulars" required></div>
-                    <div class="flex-1"><label style="margin-top:0;">Amount (₹)</label><input type="number"
-                            id="edit-amount" required></div>
-                    <div class="flex-1"><label style="margin-top:0;">Category</label><select
-                            id="edit-category"></select></div>
+                <div class="flex-1">
+                    <label for="edit-type">Type</label>
+                    <select id="edit-type" required>
+                        <option value="Receipt">Receipt (Money In)</option>
+                        <option value="Expense">Expense (Money Out)</option>
+                        <option value="Payment">Payment</option>
+                        <option value="Contra">Contra (Bank-Cash Transfer)</option>
+                    </select>
                 </div>
-                <div class="flex-row" style="margin-bottom: 20px;">
-                    <div style="flex: 1; min-width: 0;"><label style="margin-top:0;">Note</label><input type="text"
-                            id="edit-notes"></div>
-                </div>
-                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--border-color);">
-    <label for="auth-editor-pass" style="color: #ef4444;">Editor Password (Required)</label>
-    <input type="password" id="auth-editor-pass" placeholder="Enter Editor Password" required>
-</div>
+            </div>
 
-<div style="display: flex; gap: 10px; margin-top: 20px;">
-    <button type="submit" class="submit-btn" style="flex: 1;">Update Record</button>
-    <button type="button" class="secondary-btn" onclick="closeEditModal()" style="flex: 1;">Cancel</button>
-</div>
-            </form>
-        </div>
+            <label for="edit-particulars">Particulars</label>
+            <input type="text" id="edit-particulars" required>
+
+            <div class="flex-row" style="margin-top: 10px;">
+                <div class="flex-1">
+                    <label for="edit-amount">Amount (₹)</label>
+                    <input type="number" id="edit-amount" min="1" required>
+                </div>
+                <div class="flex-1">
+                    <label for="edit-category">Category</label>
+                    <select id="edit-category"></select>
+                </div>
+                <div class="flex-1">
+                    <label for="edit-account">Ledger</label>
+                    <select id="edit-account" required>
+                        <option value="Cash">Cash</option>
+                        <option value="Bank Account">Bank Account</option>
+                    </select>
+                </div>
+            </div>
+
+            <label for="edit-notes">Notes (Optional)</label>
+            <input type="text" id="edit-notes">
+
+            <!-- EDITOR AUTHENTICATION SECTION -->
+            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--border-color);">
+                <label for="auth-editor-pass" style="color: #ef4444;">Editor Password (Required)</label>
+                <input type="password" id="auth-editor-pass" placeholder="Enter Editor Password" required>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button type="submit" class="submit-btn" style="flex: 1;">Update Record</button>
+                <button type="button" class="secondary-btn" onclick="closeEditModal()" style="flex: 1;">Cancel</button>
+            </div>
+        </form>
     </div>
+</div>
 
     <script type="module" src="app.js"></script>
     <script>
@@ -857,7 +870,8 @@
             <p id="confirm-message" style="margin-bottom: 24px; color: var(--text-sub);"></p>
             <div class="flex-row" style="justify-content: center; gap: 12px;">
                 <button id="confirm-cancel-btn" class="secondary-btn" style="flex: 1;">Cancel</button>
-                <button id="confirm-ok-btn" class="secondary-btn" style="flex: 1; background: #6366f1; color: #ffffff; border: none;">Proceed</button>
+                <button id="confirm-ok-btn" class="secondary-btn"
+                    style="flex: 1; background: #6366f1; color: #ffffff; border: none;">Proceed</button>
             </div>
         </div>
     </div>
