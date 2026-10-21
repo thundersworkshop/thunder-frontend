@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thunder HQ - Owner Command Center</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-theme="dark" style="overflow-y: auto; padding: 20px;">
+
+    <!-- OWNER AUTHENTICATION WALL -->
+    <div id="owner-auth-wall" class="form-box" style="max-width: 420px; width: 100%; margin: auto;">
+        <h2 style="color: #ff0844; text-align: center; font-size: 20px;">⚡ THUNDER OWNER HQ</h2>
+        <p style="color: #94a3b8; font-size: 12px; text-align: center; margin-bottom: 20px;">Restricted Area. Authorized Owner Only.</p>
+        
+        <form id="owner-login-form" style="display: flex; flex-direction: column; gap: 12px;">
+            <input type="email" id="owner-email" placeholder="Owner Email" required>
+            <input type="password" id="owner-password" placeholder="Firebase Account Password" required>
+            <input type="password" id="owner-pin" placeholder="Secret Master PIN" required>
+            <button type="submit" id="owner-login-btn" class="action-btn" style="background: linear-gradient(135deg, #ff0844 0%, #ffb199 100%); padding: 12px; margin-top: 10px;">Unlock Command Center</button>
+            <p id="owner-error" style="color: #ef4444; font-size: 12px; text-align: center; display: none; font-weight: bold;"></p>
+        </form>
+    </div>
+
+    <!-- OWNER INBOX DASHBOARD (Hidden until verified) -->
+    <div id="owner-dashboard" class="data-card" style="display: none; width: 100%; max-width: 1000px; height: 88vh; overflow-y: auto; margin: auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+            <div>
+                <h2 style="color: #10b981; margin: 0; font-size: 20px;">📬 User Support Inbox</h2>
+                <p style="color: var(--text-sub); font-size: 12px;">Live queries from your users and login wall</p>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button class="secondary-btn" onclick="fetchTickets()">🔄 Refresh</button>
+                <button class="del-btn" onclick="ownerLogout()" style="padding: 8px 16px; font-size: 12px;">🚪 Lock Vault</button>
+            </div>
+        </div>
+
+        <div id="tickets-container" style="display: flex; flex-direction: column; gap: 15px;"></div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBP8B2KiK_EWxhLrRgeC6uxy1ItYQNbGC4",
+            authDomain: "thunders-workshop.firebaseapp.com",
+            projectId: "thunders-workshop",
+            storageBucket: "thunders-workshop.firebasestorage.app",
+            messagingSenderId: "41571220343",
+            appId: "1:41571220343:web:ab370784eb0bb09810ff72"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const API_URL = 'https://thunder-backend-esf1.onrender.com/api';
+
+        let ownerToken = null;
+        let masterPin = null;
+
+        document.getElementById('owner-login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('owner-email').value.trim();
+            const pass = document.getElementById('owner-password').value;
+            const pin = document.getElementById('owner-pin').value.trim();
+            const errEl = document.getElementById('owner-error');
+            const btn = document.getElementById('owner-login-btn');
+
+            btn.innerText = "Verifying Identity...";
+            errEl.style.display = 'none';
+
+            try {
+                const cred = await signInWithEmailAndPassword(auth, email, pass);
+                ownerToken = await cred.user.getIdToken();
+                masterPin = pin;
+
+                await fetchTickets(true);
+                document.getElementById('owner-auth-wall').style.display = 'none';
+                document.getElementById('owner-dashboard').style.display = 'block';
+            } catch (err) {
+                errEl.innerText = err.message || "Access Denied.";
+                errEl.style.display = 'block';
+            } finally {
+                btn.innerText = "Unlock Command Center";
+            }
+        });
+
+        window.fetchTickets = async function(throwOnError = false) {
+            const container = document.getElementById('tickets-container');
+            container.innerHTML = `<p style="color: #94a3b8; text-align: center;">Loading messages...</p>`;
+
+            const res = await fetch(`${API_URL}/owner/tickets`, {
+                headers: {
+                    'Authorization': `Bearer ${ownerToken}`,
+                    'x-owner-pin': masterPin
+                }
+            });
+
+            const data = await res.json();
+            if (!res.ok) {
+                if (throwOnError) throw new Error(data.error || "Unauthorized");
+                return alert(data.error);
+            }
+
+            if (data.length === 0) {
+                container.innerHTML = `<p style="color: #94a3b8; text-align: center; padding: 40px;">🎉 Inbox zero! No pending user queries.</p>`;
+                return;
+            }
+
+            container.innerHTML = data.map(t => `
+                <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.08); padding: 18px; border-radius: 12px; display: flex; flex-direction: column; gap: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                        <div>
+                            <strong style="color: #f8fafc; font-size: 15px;">${t.subject}</strong>
+                            <span style="background: ${t.userStatus.includes('Verified') ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)'}; color: ${t.userStatus.includes('Verified') ? '#10b981' : '#f59e0b'}; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; margin-left: 8px;">${t.userStatus}</span>
+                        </div>
+                        <span style="color: #94a3b8; font-size: 11px;">${new Date(t.createdAt).toLocaleString()}</span>
+                    </div>
+                    <div style="font-size: 12px; color: #38bdf8;">
+                        From: <strong>${t.name}</strong> (${t.email})
+                    </div>
+                    <p style="color: #e2e8f0; font-size: 13px; line-height: 1.5; background: rgba(0,0,0,0.25); padding: 12px; border-radius: 8px; margin-top: 4px; white-space: pre-wrap;">${t.message}</p>
+                    <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 6px;">
+                        <a href="mailto:${t.email}?subject=Re: ${encodeURIComponent(t.subject)}" class="secondary-btn" style="text-decoration: none; padding: 6px 14px; font-size: 11px;">↩️ Reply via Email</a>
+                        <button class="del-btn" onclick="deleteTicket('${t._id}')" style="padding: 6px 14px; font-size: 11px;">✅ Resolve & Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        };
+
+        window.deleteTicket = async function(id) {
+            if (!confirm("Mark this query as resolved and delete it?")) return;
+            await fetch(`${API_URL}/owner/tickets/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${ownerToken}`,
+                    'x-owner-pin': masterPin
+                }
+            });
+            fetchTickets();
+        };
+
+        window.ownerLogout = function() {
+            signOut(auth).then(() => window.location.reload());
+        };
+    </script>
+</body>
+</html>

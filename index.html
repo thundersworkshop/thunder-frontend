@@ -86,6 +86,12 @@
                     <li><strong>Total Privacy:</strong> Your data is fully isolated via secure tokens. No other user can
                         view your ledger.</li>
                 </ul>
+
+                <!-- STEP 2.1: LOGIN WALL CONTACT US BUTTON -->
+                <div style="margin-top: 25px; padding-top: 20px; border-top: 1px dashed rgba(16, 185, 129, 0.3); text-align: center;">
+                    <p style="color: var(--text-sub); font-size: 13px; margin-bottom: 10px;">Facing issues with your account?</p>
+                    <button type="button" class="secondary-btn" onclick="openContactModal()" style="width: 100%; border-color: #10b981; color: #10b981; background: transparent;">✉️ Contact Us</button>
+                </div>
             </div>
 
         </div>
@@ -176,6 +182,10 @@
                     Profile</button>
                 <button class="tab-btn" onclick="openTab(event, 'settings-section'); toggleMobileMenu(true)">⚙️ App
                     Settings</button>
+
+                <!-- STEP 2.2: SIDEBAR CONTACT US BUTTON -->
+                <button class="tab-btn" onclick="openContactModal()">✉️ Contact Us</button>
+
                 <button id="audit-tab-btn" class="tab-btn"
                     onclick="openTab(event, 'audit-section'); toggleMobileMenu(true)"
                     style="display: none; color: #ef4444;">🛡️ Audit Trail</button>
@@ -806,7 +816,7 @@
 </div>
 
     <!-- FIX: Here is the Cache Buster that forces your phone to download the new JavaScript -->
-    <script type="module" src="app.js?v=thunder_final_v1"></script>
+    <script type="module" src="app.js?v=thunder_final_v2"></script>
     
     <script>
         document.addEventListener("DOMContentLoaded", () => {
@@ -869,6 +879,32 @@
                 <button id="confirm-ok-btn" class="secondary-btn"
                     style="flex: 1; background: #6366f1; color: #ffffff; border: none;">Proceed</button>
             </div>
+        </div>
+    </div>
+    <!-- STEP 2.3: IN-APP CONTACT US MODAL -->
+    <div id="contact-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 99999; justify-content: center; align-items: center; backdrop-filter: blur(4px); padding: 15px;">
+        <div class="form-box" style="width: 100%; max-width: 450px; margin: 0;">
+            <h2 style="color: #10b981; margin-bottom: 5px;">✉️ Contact Support</h2>
+            <p style="color: var(--text-sub); font-size: 12px; margin-bottom: 15px;">Send a direct message to the administrator.</p>
+            
+            <form id="contact-form">
+                <label>Your Name</label>
+                <input type="text" id="contact-name" placeholder="Enter your name" required>
+                
+                <label>Your Email Address</label>
+                <input type="email" id="contact-email" placeholder="Enter your email" required>
+                
+                <label>Subject / Issue Type</label>
+                <input type="text" id="contact-subject" placeholder="e.g., Login Issue, Bug Report, Feedback" required>
+                
+                <label>Message</label>
+                <textarea id="contact-message" rows="4" placeholder="Describe your query in detail..." required style="width: 100%; padding: 10px 14px; background-color: var(--input-bg); border: 2px solid var(--input-border); color: var(--text-main); border-radius: 8px; font-family: 'Poppins', sans-serif; font-size: 12px; resize: vertical;"></textarea>
+                
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button type="submit" id="contact-submit-btn" class="submit-btn" style="flex: 1; background: linear-gradient(135deg, #10b981 0%, #059669 100%);">Send Message</button>
+                    <button type="button" class="secondary-btn" onclick="closeContactModal()" style="flex: 1;">Cancel</button>
+                </div>
+            </form>
         </div>
     </div>
 </body>

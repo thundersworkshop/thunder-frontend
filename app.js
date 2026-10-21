@@ -1591,3 +1591,59 @@ safeSubmit('change-password-form', async (e) => {
         document.getElementById('change-password-form').reset();
     } finally { btn.innerText = "Update Password"; }
 });
+// ==========================================
+// IN-APP CONTACT SYSTEM
+// ==========================================
+window.openContactModal = function() {
+    const nameInput = document.getElementById('contact-name');
+    const emailInput = document.getElementById('contact-email');
+    
+    if (auth.currentUser && auth.currentUser.emailVerified) {
+        const displayName = auth.currentUser.displayName ? auth.currentUser.displayName.split(' | ')[1] || auth.currentUser.displayName.split(' | ')[0] : 'User';
+        nameInput.value = displayName;
+        emailInput.value = auth.currentUser.email;
+        emailInput.readOnly = true;
+    } else {
+        nameInput.value = '';
+        emailInput.value = '';
+        emailInput.readOnly = false;
+    }
+    
+    document.getElementById('contact-modal').style.display = 'flex';
+    if (window.innerWidth <= 768 && typeof toggleMobileMenu === 'function') toggleMobileMenu(true);
+};
+
+window.closeContactModal = function() {
+    document.getElementById('contact-modal').style.display = 'none';
+    document.getElementById('contact-form').reset();
+};
+
+safeSubmit('contact-form', async () => {
+    const btn = document.getElementById('contact-submit-btn');
+    btn.innerText = "Sending...";
+    btn.disabled = true;
+
+    const payload = {
+        name: document.getElementById('contact-name').value.trim(),
+        email: document.getElementById('contact-email').value.trim(),
+        subject: document.getElementById('contact-subject').value.trim(),
+        message: document.getElementById('contact-message').value.trim(),
+        userStatus: (auth.currentUser && auth.currentUser.emailVerified) ? 'Verified Vault User' : 'Login Wall / Guest'
+    };
+
+    try {
+        const res = await fetch(`${API_URL}/support`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed to send message.");
+        
+        customAlert("Message sent! Support will review your query shortly.", "success");
+        closeContactModal();
+    } finally {
+        btn.innerText = "Send Message";
+        btn.disabled = false;
+    }
+});
