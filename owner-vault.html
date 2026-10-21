@@ -13,13 +13,13 @@
         <h2 style="color: #ff0844; text-align: center; font-size: 20px;">⚡ THUNDER OWNER HQ</h2>
         <p style="color: #94a3b8; font-size: 12px; text-align: center; margin-bottom: 20px;">Restricted Area. Authorized Owner Only.</p>
         
-        <form id="owner-login-form" style="display: flex; flex-direction: column; gap: 12px;">
-            <input type="email" id="owner-email" placeholder="Owner Email" required>
-            <input type="password" id="owner-password" placeholder="Firebase Account Password" required>
-            <input type="password" id="owner-pin" placeholder="Secret Master PIN" required>
-            <button type="submit" id="owner-login-btn" class="action-btn" style="background: linear-gradient(135deg, #ff0844 0%, #ffb199 100%); padding: 12px; margin-top: 10px;">Unlock Command Center</button>
+        <div style="display: flex; flex-direction: column; gap: 15px;">
+            <input type="password" id="owner-pin" placeholder="Enter Secret Master PIN" required style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white;">
+            
+            <button type="button" id="google-login-btn" class="action-btn" style="background: linear-gradient(135deg, #ff0844 0%, #ffb199 100%); padding: 14px; width: 100%; font-weight: 600;">Sign in with Google (Owner)</button>
+            
             <p id="owner-error" style="color: #ef4444; font-size: 12px; text-align: center; display: none; font-weight: bold;"></p>
-        </form>
+        </div>
     </div>
 
     <!-- OWNER INBOX DASHBOARD (Hidden until verified) -->
@@ -40,7 +40,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBP8B2KiK_EWxhLrRgeC6uxy1ItYQNbGC4",
@@ -53,35 +53,38 @@
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
+        const provider = new GoogleAuthProvider();
         const API_URL = 'https://thunder-backend-esf1.onrender.com/api';
 
         let ownerToken = null;
         let masterPin = null;
 
-        document.getElementById('owner-login-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('owner-email').value.trim();
-            const pass = document.getElementById('owner-password').value;
+        document.getElementById('google-login-btn').addEventListener('click', async () => {
             const pin = document.getElementById('owner-pin').value.trim();
             const errEl = document.getElementById('owner-error');
-            const btn = document.getElementById('owner-login-btn');
+            const btn = document.getElementById('google-login-btn');
 
-            btn.innerText = "Verifying Identity...";
+            if (!pin) {
+                errEl.innerText = "Please enter the Secret Master PIN first.";
+                errEl.style.display = 'block';
+                return;
+            }
+
+            btn.innerText = "Authenticating with Google...";
             errEl.style.display = 'none';
 
             try {
-                const cred = await signInWithEmailAndPassword(auth, email, pass);
-                ownerToken = await cred.user.getIdToken();
+                const result = await signInWithPopup(auth, provider);
+                ownerToken = await result.user.getIdToken();
                 masterPin = pin;
 
                 await fetchTickets(true);
                 document.getElementById('owner-auth-wall').style.display = 'none';
                 document.getElementById('owner-dashboard').style.display = 'block';
             } catch (err) {
-                errEl.innerText = err.message || "Access Denied.";
+                errEl.innerText = err.message || "Google Authentication Failed.";
                 errEl.style.display = 'block';
-            } finally {
-                btn.innerText = "Unlock Command Center";
+                btn.innerText = "Sign in with Google (Owner)";
             }
         });
 
