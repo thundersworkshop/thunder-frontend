@@ -1324,12 +1324,29 @@ onAuthStateChanged(auth, async (user) => {
         document.getElementById('global-login-wall').style.display = 'none';
         document.querySelector('.app-window').style.display = 'flex'; 
         
-        if (user.displayName) {
-            const userDetails = user.displayName.split(' | ');
-            document.getElementById('profile-username').innerText = userDetails[0] || 'N/A';
-            document.getElementById('profile-fullname').innerText = userDetails[1] || 'N/A';
-            document.getElementById('profile-phone').innerText = userDetails[2] || 'N/A';
+        let rawDisplay = user.displayName || '';
+        const backupKey = `thunder_profile_${user.uid}`;
+
+        // If Google Sign-In overwrote the ' | ' format, restore from backup or format cleanly
+        if (!rawDisplay.includes(' | ')) {
+            const savedBackup = localStorage.getItem(backupKey);
+            if (savedBackup && savedBackup.includes(' | ')) {
+                rawDisplay = savedBackup;
+                await updateProfile(user, { displayName: rawDisplay });
+            } else {
+                const defaultUser = user.email ? user.email.split('@')[0] : 'User';
+                const defaultName = rawDisplay || 'N/A';
+                rawDisplay = `${defaultUser} | ${defaultName} | N/A`;
+            }
+        } else {
+            localStorage.setItem(backupKey, rawDisplay);
         }
+
+        const userDetails = rawDisplay.split(' | ');
+        document.getElementById('profile-username').innerText = userDetails[0] || 'N/A';
+        document.getElementById('profile-fullname').innerText = userDetails[1] || 'N/A';
+        document.getElementById('profile-phone').innerText = userDetails[2] || 'N/A';
+        document.getElementById('profile-email').innerText = user.email || 'N/A';
         document.getElementById('profile-email').innerText = user.email || 'N/A';
         
         await loadData();
@@ -1555,22 +1572,27 @@ document.getElementById('cancel-clean-btn').addEventListener('click', async () =
 // ==========================================
 safeSubmit('update-profile-form', async (e) => {
     const btn = document.getElementById('update-profile-form').querySelector('button');
+    const newUsernameEl = document.getElementById('update-username');
+    const newUsernameInput = newUsernameEl ? newUsernameEl.value.trim() : '';
     const newNameInput = document.getElementById('update-fullname').value.trim();
     const newPhoneInput = document.getElementById('update-phone').value.trim();
     
-    if (!newNameInput && !newPhoneInput) throw new Error("Enter a new name or phone number.");
+    if (!newUsernameInput && !newNameInput && !newPhoneInput) {
+        throw new Error("Enter a username, full name, or phone number to update.");
+    }
 
     btn.innerText = "Saving...";
-    let currentUsername = 'User', currentName = 'N/A', currentPhone = 'N/A';
-    if (auth.currentUser && auth.currentUser.displayName) {
-        const parts = auth.currentUser.displayName.split(' | ');
-        currentUsername = parts[0] || 'User'; currentName = parts[1] || 'N/A'; currentPhone = parts[2] || 'N/A';
-    }
+    let currentUsername = document.getElementById('profile-username').innerText || 'User';
+    let currentName = document.getElementById('profile-fullname').innerText || 'N/A';
+    let currentPhone = document.getElementById('profile-phone').innerText || 'N/A';
     
+    const finalUsername = newUsernameInput ? newUsernameInput : currentUsername;
     const finalName = newNameInput ? newNameInput : currentName;
     const finalPhone = newPhoneInput ? newPhoneInput : currentPhone;
+    const combinedProfile = `${finalUsername} | ${finalName} | ${finalPhone}`;
     
-    await updateProfile(auth.currentUser, { displayName: `${currentUsername} | ${finalName} | ${finalPhone}` });
+    localStorage.setItem(`thunder_profile_${auth.currentUser.uid}`, combinedProfile);
+    await updateProfile(auth.currentUser, { displayName: combinedProfile });
     location.reload();
 });
 

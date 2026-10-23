@@ -14,11 +14,11 @@
         <p style="color: #94a3b8; font-size: 12px; text-align: center; margin-bottom: 20px;">Restricted Area. Authorized Owner Only.</p>
         
         <div style="display: flex; flex-direction: column; gap: 15px;">
-            <input type="password" id="owner-pin" placeholder="Enter Secret Master PIN" required style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white;">
+            <input type="password" id="owner-pin" placeholder="Enter Secret Master PIN" required style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white; box-sizing: border-box;">
             
-            <button type="button" id="google-login-btn" class="action-btn" style="background: linear-gradient(135deg, #ff0844 0%, #ffb199 100%); padding: 14px; width: 100%; font-weight: 600;">Sign in with Google (Owner)</button>
+            <button type="button" id="google-login-btn" class="action-btn" style="background: linear-gradient(135deg, #ff0844 0%, #ffb199 100%); padding: 14px; width: 100%; font-weight: 600; margin: 0;">Sign in with Google (Owner)</button>
             
-            <p id="owner-error" style="color: #ef4444; font-size: 12px; text-align: center; display: none; font-weight: bold;"></p>
+            <p id="owner-error" style="color: #ef4444; font-size: 12px; text-align: center; display: none; font-weight: bold; margin: 0;"></p>
         </div>
     </div>
 
@@ -40,7 +40,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBP8B2KiK_EWxhLrRgeC6uxy1ItYQNbGC4",
@@ -74,8 +74,21 @@
             errEl.style.display = 'none';
 
             try {
+                // Save existing custom profile before Google Sign-In overwrites it
+                const previousProfile = auth.currentUser?.displayName;
+
                 const result = await signInWithPopup(auth, provider);
-                ownerToken = await result.user.getIdToken();
+                const user = result.user;
+
+                // Restore the 3-part profile format (Username | Full Name | Phone)
+                const backupKey = `thunder_profile_${user.uid}`;
+                const savedBackup = localStorage.getItem(backupKey) || (previousProfile && previousProfile.includes(' | ') ? previousProfile : null);
+
+                if (savedBackup && (!user.displayName || !user.displayName.includes(' | '))) {
+                    await updateProfile(user, { displayName: savedBackup });
+                }
+
+                ownerToken = await user.getIdToken();
                 masterPin = pin;
 
                 await fetchTickets(true);

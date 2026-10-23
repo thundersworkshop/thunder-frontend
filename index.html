@@ -569,6 +569,8 @@
                     <div class="form-box" style="flex: 1; min-width: 300px; margin-bottom: 0;">
                         <h4 style="margin-bottom: 15px; color: var(--text-main);">Update Details</h4>
                         <form id="update-profile-form">
+                            <input type="text" id="update-username" placeholder="New Username"
+                                style="margin-bottom: 10px;">
                             <input type="text" id="update-fullname" placeholder="New Full Name"
                                 style="margin-bottom: 10px;">
                             <input type="tel" id="update-phone" placeholder="New Phone Number"
@@ -816,7 +818,7 @@
 </div>
 
     <!-- FIX: Here is the Cache Buster that forces your phone to download the new JavaScript -->
-    <script type="module" src="app.js?v=thunder_final_v2"></script>
+    <script type="module" src="app.js?v=thunder_final_v3"></script>
     
     <script>
         document.addEventListener("DOMContentLoaded", () => {
@@ -881,7 +883,7 @@
             </div>
         </div>
     </div>
-    <!-- STEP 2.3: IN-APP CONTACT US MODAL -->
+    <!-- IN-APP CONTACT US MODAL -->
     <div id="contact-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 99999; justify-content: center; align-items: center; backdrop-filter: blur(4px); padding: 15px;">
         <div class="form-box" style="width: 100%; max-width: 450px; margin: 0;">
             <h2 style="color: #10b981; margin-bottom: 5px;">✉️ Contact Support</h2>
@@ -892,13 +894,13 @@
                 <input type="text" id="contact-name" placeholder="Enter your name" required>
                 
                 <label>Your Email Address</label>
-                <input type="email" id="contact-email" placeholder="Enter your email" required>
+                <input type="email" id="contact-email" placeholder="Enter your email" required style="width: 100%; padding: 10px 14px; background-color: var(--input-bg); border: 2px solid var(--input-border); color: var(--text-main); border-radius: 8px; font-family: 'Poppins', sans-serif; font-size: 12px; box-sizing: border-box;">
                 
                 <label>Subject / Issue Type</label>
                 <input type="text" id="contact-subject" placeholder="e.g., Login Issue, Bug Report, Feedback" required>
                 
                 <label>Message</label>
-                <textarea id="contact-message" rows="4" placeholder="Describe your query in detail..." required style="width: 100%; padding: 10px 14px; background-color: var(--input-bg); border: 2px solid var(--input-border); color: var(--text-main); border-radius: 8px; font-family: 'Poppins', sans-serif; font-size: 12px; resize: vertical;"></textarea>
+                <textarea id="contact-message" rows="4" placeholder="Describe your query in detail..." required style="width: 100%; padding: 10px 14px; background-color: var(--input-bg); border: 2px solid var(--input-border); color: var(--text-main); border-radius: 8px; font-family: 'Poppins', sans-serif; font-size: 12px; resize: vertical; box-sizing: border-box;"></textarea>
                 
                 <div style="display: flex; gap: 10px; margin-top: 20px;">
                     <button type="submit" id="contact-submit-btn" class="submit-btn" style="flex: 1; background: linear-gradient(135deg, #10b981 0%, #059669 100%);">Send Message</button>
