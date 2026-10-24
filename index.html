@@ -35,10 +35,10 @@
 
                 <!-- LOG IN FORM -->
                 <form id="form-login" style="display: flex; flex-direction: column; gap: 15px;">
-                    <input type="email" id="login-email" placeholder="Email Address" required
-                        style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white;">
+                    <input type="email" id="login-email" placeholder="Email Address (Gmail, Outlook, Yahoo...)" required
+                        style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white; box-sizing: border-box;">
                     <input type="password" id="login-password" placeholder="Password" required
-                        style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white;">
+                        style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white; box-sizing: border-box;">
                     <button type="submit" class="action-btn"
                         style="width: 100%; margin: 0; padding: 14px; background: linear-gradient(135deg, #10b981 0%, #059669 100%);"
                         id="btn-login">Access Vault</button>
@@ -49,17 +49,17 @@
                 <!-- SIGN UP FORM -->
                 <form id="form-signup" style="display: none; flex-direction: column; gap: 15px;">
                     <input type="text" id="signup-fullname" placeholder="Full Name" required
-                        style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white;">
+                        style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white; box-sizing: border-box;">
                     <input type="tel" id="signup-phone" placeholder="Phone Number" required
-                        style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white;">
+                        style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white; box-sizing: border-box;">
                     <input type="text" id="signup-username" placeholder="Unique Username" required
-                        style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white;">
-                    <input type="email" id="signup-email" placeholder="Email Address" required
-                        style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white;">
+                        style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white; box-sizing: border-box;">
+                    <input type="email" id="signup-email" placeholder="Official Email (Gmail, Outlook, Yahoo...)" required
+                        style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white; box-sizing: border-box;">
                     <input type="password" id="signup-password" placeholder="Create Password" required
-                        style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white;">
+                        style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white; box-sizing: border-box;">
                     <input type="password" id="signup-password-confirm" placeholder="Confirm Password" required
-                        style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white;">
+                        style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white; box-sizing: border-box;">
                     <button type="submit" class="action-btn"
                         style="width: 100%; margin: 0; padding: 14px; background: linear-gradient(135deg, #10b981 0%, #059669 100%);"
                         id="btn-signup">Create Account</button>
@@ -87,7 +87,7 @@
                         view your ledger.</li>
                 </ul>
 
-                <!-- STEP 2.1: LOGIN WALL CONTACT US BUTTON -->
+                <!-- LOGIN WALL CONTACT US BUTTON -->
                 <div style="margin-top: 25px; padding-top: 20px; border-top: 1px dashed rgba(16, 185, 129, 0.3); text-align: center;">
                     <p style="color: var(--text-sub); font-size: 13px; margin-bottom: 10px;">Facing issues with your account?</p>
                     <button type="button" class="secondary-btn" onclick="openContactModal()" style="width: 100%; border-color: #10b981; color: #10b981; background: transparent;">✉️ Contact Us</button>
@@ -183,7 +183,7 @@
                 <button class="tab-btn" onclick="openTab(event, 'settings-section'); toggleMobileMenu(true)">⚙️ App
                     Settings</button>
 
-                <!-- STEP 2.2: SIDEBAR CONTACT US BUTTON -->
+                <!-- SIDEBAR CONTACT US BUTTON -->
                 <button class="tab-btn" onclick="openContactModal()">✉️ Contact Us</button>
 
                 <button id="audit-tab-btn" class="tab-btn"
@@ -192,7 +192,7 @@
                 <button id="hidden-search-tab" class="tab-btn" onclick="openTab(event, 'search-section')"
                     style="display: none;">Search</button>
 
-                <!-- NEW GLOBAL LOGOUT BUTTON -->
+                <!-- GLOBAL LOGOUT BUTTON -->
                 <button class="tab-btn" onclick="globalLogout()"
                     style="color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); margin-top: 10px;">🚪 Sign
                     Out</button>
@@ -304,7 +304,6 @@
                         <label>Particulars / Name</label><input type="text" id="particulars"
                             placeholder="What is this transaction for?" required>
                         <div class="flex-row">
-                            <!-- FIX: type="text" inputmode="decimal" stops mobile keyboards from pushing text, JS filters the rest -->
                             <div class="flex-1"><label>Amount (₹)</label><input type="text" inputmode="decimal" id="amount"
                                     placeholder="0" required></div>
                             <div class="flex-1"><label>Account</label><select id="account" required>
@@ -525,7 +524,7 @@
             <!-- MY PROFILE SECTION -->
             <div id="profile-section" class="tab-content">
 
-                <!-- Hero Profile Card (Always at the top, stretches to fit) -->
+                <!-- Hero Profile Card -->
                 <div class="data-card" style="border-radius: 16px; margin-bottom: 20px;">
                     <h2 style="color: #10b981; margin-bottom: 20px;">My Profile</h2>
                     <div style="display: flex; flex-direction: column; gap: 15px; font-size: 14px;">
@@ -562,10 +561,10 @@
                     </div>
                 </div>
 
-                <!-- Forms Container (Side-by-side on laptop, stacked on phone) -->
+                <!-- Forms Container -->
                 <div class="flex-row" style="flex-wrap: wrap; gap: 20px; align-items: flex-start;">
 
-                    <!-- Edit Details -->
+                    <!-- Edit Details (Updated with Username, Full Name, Phone) -->
                     <div class="form-box" style="flex: 1; min-width: 300px; margin-bottom: 0;">
                         <h4 style="margin-bottom: 15px; color: var(--text-main);">Update Details</h4>
                         <form id="update-profile-form">
@@ -597,6 +596,7 @@
 
                 </div>
             </div>
+
             <!-- SETTINGS -->
             <div id="settings-section" class="tab-content">
 
@@ -607,9 +607,9 @@
 
                     <form id="settings-auth-form" style="display: flex; flex-direction: column; gap: 15px;">
                         <input type="email" id="settings-email" placeholder="Account Email" required
-                            style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white;">
+                            style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white; box-sizing: border-box;">
                         <input type="password" id="settings-password" placeholder="Account Password" required
-                            style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white;">
+                            style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white; box-sizing: border-box;">
                         <button type="submit" class="action-btn"
                             style="width: 100%; background: #6366f1; margin: 0; padding: 12px;">Unlock Settings</button>
                         <p id="settings-auth-error"
@@ -682,7 +682,6 @@
                     <div class="form-box">
                         <h2>Master Opening Balances</h2>
                         <form id="balance-form" class="flex-row">
-                            <!-- FIX: type="text" inputmode="decimal" stops mobile text input -->
                             <div class="flex-1"><label style="margin-top:0;">Cash (₹)</label><input type="text" inputmode="decimal"
                                     id="opening-cash" required></div>
                             <div class="flex-1"><label style="margin-top:0;">Bank (₹)</label><input type="text" inputmode="decimal"
@@ -733,7 +732,7 @@
                                 Initiate 1-Hour Timer
                             </button>
 
-                            <!-- Timer UI (Hidden by default) -->
+                            <!-- Timer UI -->
                             <div id="timer-container"
                                 style="display: none; margin-top: 15px; padding: 15px; background: var(--danger-bg); border-radius: 8px; text-align: center; border: 1px dashed var(--danger-border);">
                                 <p style="color: #ef4444; font-weight: 700; margin-bottom: 10px; font-size: 13px;">Data
@@ -755,70 +754,96 @@
         </main>
     </div>
 
-    <!-- COMPACT DESKTOP EDIT TRANSACTION MODAL -->
+    <!-- EDIT TRANSACTION MODAL -->
     <div id="edit-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(4px);">
-    <div class="form-box" style="width: 90%; max-width: 500px; max-height: 90vh; overflow-y: auto;">
-        <h2>Edit Transaction</h2>
-        <form id="edit-form">
-            <input type="hidden" id="edit-id">
-            
-            <div class="flex-row" style="margin-bottom: 10px;">
-                <div class="flex-1">
-                    <label for="edit-date">Date</label>
-                    <input type="date" id="edit-date" required>
+        <div class="form-box" style="width: 90%; max-width: 500px; max-height: 90vh; overflow-y: auto;">
+            <h2>Edit Transaction</h2>
+            <form id="edit-form">
+                <input type="hidden" id="edit-id">
+                
+                <div class="flex-row" style="margin-bottom: 10px;">
+                    <div class="flex-1">
+                        <label for="edit-date">Date</label>
+                        <input type="date" id="edit-date" required>
+                    </div>
+                    <div class="flex-1">
+                        <label for="edit-type">Type</label>
+                        <select id="edit-type" required>
+                            <option value="Receipt">Receipt (Money In)</option>
+                            <option value="Expense">Expense (Money Out)</option>
+                            <option value="Payment">Payment</option>
+                            <option value="Contra">Contra (Bank-Cash Transfer)</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="flex-1">
-                    <label for="edit-type">Type</label>
-                    <select id="edit-type" required>
-                        <option value="Receipt">Receipt (Money In)</option>
-                        <option value="Expense">Expense (Money Out)</option>
-                        <option value="Payment">Payment</option>
-                        <option value="Contra">Contra (Bank-Cash Transfer)</option>
-                    </select>
+
+                <label for="edit-particulars">Particulars</label>
+                <input type="text" id="edit-particulars" required>
+
+                <div class="flex-row" style="margin-top: 10px;">
+                    <div class="flex-1">
+                        <label for="edit-amount">Amount (₹)</label>
+                        <input type="text" inputmode="decimal" id="edit-amount" placeholder="0" required>
+                    </div>
+                    <div class="flex-1">
+                        <label for="edit-category">Category</label>
+                        <select id="edit-category"></select>
+                    </div>
+                    <div class="flex-1">
+                        <label for="edit-account">Ledger</label>
+                        <select id="edit-account" required>
+                            <option value="Cash">Cash</option>
+                            <option value="Bank Account">Bank Account</option>
+                        </select>
+                    </div>
                 </div>
-            </div>
 
-            <label for="edit-particulars">Particulars</label>
-            <input type="text" id="edit-particulars" required>
+                <label for="edit-notes">Notes (Optional)</label>
+                <input type="text" id="edit-notes">
 
-            <div class="flex-row" style="margin-top: 10px;">
-                <!-- FIX: type="text" inputmode="decimal" -->
-                <div class="flex-1">
-                    <label for="edit-amount">Amount (₹)</label>
-                    <input type="text" inputmode="decimal" id="edit-amount" placeholder="0" required>
+                <!-- EDITOR AUTHENTICATION SECTION -->
+                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--border-color);">
+                    <label for="auth-editor-pass" style="color: #ef4444;">Editor Password (Required)</label>
+                    <input type="password" id="auth-editor-pass" placeholder="Enter Editor Password" required>
                 </div>
-                <div class="flex-1">
-                    <label for="edit-category">Category</label>
-                    <select id="edit-category"></select>
+
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button type="submit" class="submit-btn" style="flex: 1;">Update Record</button>
+                    <button type="button" class="secondary-btn" onclick="closeEditModal()" style="flex: 1;">Cancel</button>
                 </div>
-                <div class="flex-1">
-                    <label for="edit-account">Ledger</label>
-                    <select id="edit-account" required>
-                        <option value="Cash">Cash</option>
-                        <option value="Bank Account">Bank Account</option>
-                    </select>
-                </div>
-            </div>
-
-            <label for="edit-notes">Notes (Optional)</label>
-            <input type="text" id="edit-notes">
-
-            <!-- EDITOR AUTHENTICATION SECTION -->
-            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--border-color);">
-                <label for="auth-editor-pass" style="color: #ef4444;">Editor Password (Required)</label>
-                <input type="password" id="auth-editor-pass" placeholder="Enter Editor Password" required>
-            </div>
-
-            <div style="display: flex; gap: 10px; margin-top: 20px;">
-                <button type="submit" class="submit-btn" style="flex: 1;">Update Record</button>
-                <button type="button" class="secondary-btn" onclick="closeEditModal()" style="flex: 1;">Cancel</button>
-            </div>
-        </form>
+            </form>
+        </div>
     </div>
-</div>
 
-    <!-- FIX: Here is the Cache Buster that forces your phone to download the new JavaScript -->
-    <script type="module" src="app.js?v=thunder_final_v3"></script>
+    <!-- IN-APP CONTACT US MODAL (With matched email box styling) -->
+    <div id="contact-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 99999; justify-content: center; align-items: center; backdrop-filter: blur(4px); padding: 15px;">
+        <div class="form-box" style="width: 100%; max-width: 450px; margin: 0;">
+            <h2 style="color: #10b981; margin-bottom: 5px;">✉️ Contact Support</h2>
+            <p style="color: var(--text-sub); font-size: 12px; margin-bottom: 15px;">Send a direct message to the administrator.</p>
+            
+            <form id="contact-form">
+                <label>Your Name</label>
+                <input type="text" id="contact-name" placeholder="Enter your name" required>
+                
+                <label>Your Email Address</label>
+                <input type="email" id="contact-email" placeholder="Enter your official email" required style="width: 100%; padding: 10px 14px; background-color: var(--input-bg); border: 2px solid var(--input-border); color: var(--text-main); border-radius: 8px; font-family: 'Poppins', sans-serif; font-size: 12px; box-sizing: border-box;">
+                
+                <label>Subject / Issue Type</label>
+                <input type="text" id="contact-subject" placeholder="e.g., Login Issue, Bug Report, Feedback" required>
+                
+                <label>Message</label>
+                <textarea id="contact-message" rows="4" placeholder="Describe your query in detail..." required style="width: 100%; padding: 10px 14px; background-color: var(--input-bg); border: 2px solid var(--input-border); color: var(--text-main); border-radius: 8px; font-family: 'Poppins', sans-serif; font-size: 12px; resize: vertical; box-sizing: border-box;"></textarea>
+                
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button type="submit" id="contact-submit-btn" class="submit-btn" style="flex: 1; background: linear-gradient(135deg, #10b981 0%, #059669 100%);">Send Message</button>
+                    <button type="button" class="secondary-btn" onclick="closeContactModal()" style="flex: 1;">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- CACHE BUSTER v5 -->
+    <script type="module" src="app.js?v=thunder_final_v5"></script>
     
     <script>
         document.addEventListener("DOMContentLoaded", () => {
@@ -881,32 +906,6 @@
                 <button id="confirm-ok-btn" class="secondary-btn"
                     style="flex: 1; background: #6366f1; color: #ffffff; border: none;">Proceed</button>
             </div>
-        </div>
-    </div>
-    <!-- IN-APP CONTACT US MODAL -->
-    <div id="contact-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 99999; justify-content: center; align-items: center; backdrop-filter: blur(4px); padding: 15px;">
-        <div class="form-box" style="width: 100%; max-width: 450px; margin: 0;">
-            <h2 style="color: #10b981; margin-bottom: 5px;">✉️ Contact Support</h2>
-            <p style="color: var(--text-sub); font-size: 12px; margin-bottom: 15px;">Send a direct message to the administrator.</p>
-            
-            <form id="contact-form">
-                <label>Your Name</label>
-                <input type="text" id="contact-name" placeholder="Enter your name" required>
-                
-                <label>Your Email Address</label>
-                <input type="email" id="contact-email" placeholder="Enter your email" required style="width: 100%; padding: 10px 14px; background-color: var(--input-bg); border: 2px solid var(--input-border); color: var(--text-main); border-radius: 8px; font-family: 'Poppins', sans-serif; font-size: 12px; box-sizing: border-box;">
-                
-                <label>Subject / Issue Type</label>
-                <input type="text" id="contact-subject" placeholder="e.g., Login Issue, Bug Report, Feedback" required>
-                
-                <label>Message</label>
-                <textarea id="contact-message" rows="4" placeholder="Describe your query in detail..." required style="width: 100%; padding: 10px 14px; background-color: var(--input-bg); border: 2px solid var(--input-border); color: var(--text-main); border-radius: 8px; font-family: 'Poppins', sans-serif; font-size: 12px; resize: vertical; box-sizing: border-box;"></textarea>
-                
-                <div style="display: flex; gap: 10px; margin-top: 20px;">
-                    <button type="submit" id="contact-submit-btn" class="submit-btn" style="flex: 1; background: linear-gradient(135deg, #10b981 0%, #059669 100%);">Send Message</button>
-                    <button type="button" class="secondary-btn" onclick="closeContactModal()" style="flex: 1;">Cancel</button>
-                </div>
-            </form>
         </div>
     </div>
 </body>

@@ -74,13 +74,12 @@
             errEl.style.display = 'none';
 
             try {
-                // Save existing custom profile before Google Sign-In overwrites it
                 const previousProfile = auth.currentUser?.displayName;
 
                 const result = await signInWithPopup(auth, provider);
                 const user = result.user;
 
-                // Restore the 3-part profile format (Username | Full Name | Phone)
+                // Restore 3-part profile format if Google Sign-In overwrote it
                 const backupKey = `thunder_profile_${user.uid}`;
                 const savedBackup = localStorage.getItem(backupKey) || (previousProfile && previousProfile.includes(' | ') ? previousProfile : null);
 

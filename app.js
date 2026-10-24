@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-import { getAuth, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential, sendEmailVerification } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
+import { getAuth, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential, sendEmailVerification } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyBP8B2KiK_EWxhLrRgeC6uxy1ItYQNbGC4",
@@ -78,6 +78,49 @@ blockText('edit-amount');
 blockText('opening-cash');
 blockText('opening-bank');
 
+// ==========================================
+// ANTI-SPAM & TRUSTED EMAIL WHITELIST SHIELD
+// Blocks Fake Account Creation & Disposable Emails
+// ==========================================
+const ALLOWED_EMAIL_DOMAINS = [
+    // Google
+    'gmail.com', 'googlemail.com',
+    // Microsoft (Global & India)
+    'outlook.com', 'outlook.in', 'hotmail.com', 'hotmail.co.in', 'hotmail.co.uk', 'live.com', 'live.in', 'msn.com',
+    // Yahoo (Global & India)
+    'yahoo.com', 'yahoo.in', 'yahoo.co.in', 'yahoo.co.uk', 'ymail.com', 'rocketmail.com',
+    // Apple
+    'icloud.com', 'me.com', 'mac.com',
+    // Privacy & Recognized Providers
+    'proton.me', 'protonmail.com', 'pm.me',
+    'zoho.com', 'zohomail.in',
+    'rediffmail.com', 'aol.com', 'gmx.com'
+];
+
+function validateTrustedEmail(email) {
+    const cleanEmail = (email || '').trim().toLowerCase();
+    
+    // 1. Standard format check (blocks '+' alias spam tricks like user+1@gmail.com)
+    const emailRegex = /^[a-z0-9._-]+@[a-z0-9.-]+\.[a-z]{2,}$/;
+    if (!emailRegex.test(cleanEmail)) {
+        return { valid: false, error: "Invalid email format. Please enter a standard email address without '+' aliases." };
+    }
+
+    const domain = cleanEmail.split('@')[1] || '';
+
+    // 2. Allow whitelisted providers OR verified educational/government domains
+    const isWhitelisted = ALLOWED_EMAIL_DOMAINS.includes(domain);
+    const isInstitutional = domain.endsWith('.ac.in') || domain.endsWith('.edu') || domain.endsWith('.edu.in') || domain.endsWith('.gov.in');
+
+    if (!isWhitelisted && !isInstitutional) {
+        return { 
+            valid: false, 
+            error: "Only official email providers (Gmail, Outlook, Yahoo, iCloud, Proton, Zoho, etc.) are allowed. Temp/disposable emails are strictly blocked." 
+        };
+    }
+
+    return { valid: true, email: cleanEmail };
+}
 
 // ==========================================
 // AUTO-LOGOUT & GLOBAL INACTIVITY TIMER
@@ -544,7 +587,7 @@ window.exportTabToPDF = function() {
     const activeTabEl = document.querySelector('.tab-content.active');
     if (activeTabEl) activeTab = activeTabEl.id;
 
-    if (['dashboard-section', 'entry-section', 'settings-section'].includes(activeTab)) {
+    if (['dashboard-section', 'entry-section', 'settings-section', 'profile-section'].includes(activeTab)) {
         return customAlert("Please navigate to a Ledger, Statement, or Search tab to export data.", "warning");
     }
 
@@ -1308,7 +1351,7 @@ if(document.getElementById('edit-type')) {
 }
 
 // -------------------------------------------------------------
-// FIREBASE AUTHENTICATION LOGIC
+// FIREBASE AUTHENTICATION & PROFILE BACKUP LOGIC
 // -------------------------------------------------------------
 
 onAuthStateChanged(auth, async (user) => {
@@ -1324,10 +1367,10 @@ onAuthStateChanged(auth, async (user) => {
         document.getElementById('global-login-wall').style.display = 'none';
         document.querySelector('.app-window').style.display = 'flex'; 
         
+        // Smart Profile Backup & Restore (Prevents Google Sign-In from causing 'N/A')
         let rawDisplay = user.displayName || '';
         const backupKey = `thunder_profile_${user.uid}`;
 
-        // If Google Sign-In overwrote the ' | ' format, restore from backup or format cleanly
         if (!rawDisplay.includes(' | ')) {
             const savedBackup = localStorage.getItem(backupKey);
             if (savedBackup && savedBackup.includes(' | ')) {
@@ -1347,7 +1390,6 @@ onAuthStateChanged(auth, async (user) => {
         document.getElementById('profile-fullname').innerText = userDetails[1] || 'N/A';
         document.getElementById('profile-phone').innerText = userDetails[2] || 'N/A';
         document.getElementById('profile-email').innerText = user.email || 'N/A';
-        document.getElementById('profile-email').innerText = user.email || 'N/A';
         
         await loadData();
     } else {
@@ -1357,19 +1399,29 @@ onAuthStateChanged(auth, async (user) => {
     }
 });
 
+// SIGN UP FORM (With Strict Official Email Protection against Fake Accounts)
 const formSignup = document.getElementById('form-signup');
 if (formSignup) {
     formSignup.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const fullname = document.getElementById('signup-fullname').value;
-        const phone = document.getElementById('signup-phone').value;
-        const username = document.getElementById('signup-username').value;
-        const email = document.getElementById('signup-email').value;
+        const fullname = document.getElementById('signup-fullname').value.trim();
+        const phone = document.getElementById('signup-phone').value.trim();
+        const username = document.getElementById('signup-username').value.trim();
+        const rawEmail = document.getElementById('signup-email').value.trim();
         const password = document.getElementById('signup-password').value;
         const confirmPass = document.getElementById('signup-password-confirm').value;
         
         const btn = document.getElementById('btn-signup');
         const errorEl = document.getElementById('error-signup');
+
+        // Block disposable/temp emails & '+' aliases before account creation
+        const emailCheck = validateTrustedEmail(rawEmail);
+        if (!emailCheck.valid) {
+            errorEl.innerText = emailCheck.error;
+            errorEl.style.display = 'block';
+            return;
+        }
+        const email = emailCheck.email;
         
         if (password !== confirmPass) {
             errorEl.innerText = "Passwords do not match!";
@@ -1383,8 +1435,11 @@ if (formSignup) {
 
         try {
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            const combinedProfile = `${username} | ${fullname} | ${phone}`;
+            localStorage.setItem(`thunder_profile_${userCredential.user.uid}`, combinedProfile);
+
             await updateProfile(userCredential.user, { 
-                displayName: `${username} | ${fullname} | ${phone}` 
+                displayName: combinedProfile 
             });
             await sendEmailVerification(userCredential.user);
             await signOut(auth);
@@ -1427,14 +1482,23 @@ if (formSignup) {
     });
 }
 
+// LOG IN FORM (With Official Email Validation)
 const formLogin = document.getElementById('form-login');
 if (formLogin) {
     formLogin.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const email = document.getElementById('login-email').value;
+        const rawEmail = document.getElementById('login-email').value.trim();
         const password = document.getElementById('login-password').value;
         const btn = document.getElementById('btn-login');
         const errorEl = document.getElementById('error-login');
+
+        const emailCheck = validateTrustedEmail(rawEmail);
+        if (!emailCheck.valid) {
+            errorEl.innerText = emailCheck.error;
+            errorEl.style.display = 'block';
+            return;
+        }
+        const email = emailCheck.email;
         
         btn.innerText = "Authenticating...";
         btn.disabled = true;
@@ -1466,13 +1530,21 @@ window.globalLogout = function() {
     signOut(auth).then(() => { window.location.reload(); });
 };
 
-safeSubmit('settings-auth-form', async (e) => {
-    const email = document.getElementById('settings-email').value.trim();
+safeSubmit('settings-auth-form', async () => {
+    const rawEmail = document.getElementById('settings-email').value.trim();
     const pass = document.getElementById('settings-password').value;
     const errorEl = document.getElementById('settings-auth-error');
     const btn = document.getElementById('settings-auth-form').querySelector('button');
+
+    const emailCheck = validateTrustedEmail(rawEmail);
+    if (!emailCheck.valid) {
+        errorEl.innerText = emailCheck.error;
+        errorEl.style.display = 'block';
+        return;
+    }
+    const email = emailCheck.email;
     
-    if (auth.currentUser && email.toLowerCase() !== auth.currentUser.email.toLowerCase()) {
+    if (auth.currentUser && email !== auth.currentUser.email.toLowerCase()) {
         errorEl.innerText = "Access Denied: Incorrect Email or Password.";
         errorEl.style.display = 'block';
         return;
@@ -1568,9 +1640,9 @@ document.getElementById('cancel-clean-btn').addEventListener('click', async () =
 });
 
 // ==========================================
-// PROFILE LOGIC
+// PROFILE LOGIC (Saves to Firebase + Local Backup)
 // ==========================================
-safeSubmit('update-profile-form', async (e) => {
+safeSubmit('update-profile-form', async () => {
     const btn = document.getElementById('update-profile-form').querySelector('button');
     const newUsernameEl = document.getElementById('update-username');
     const newUsernameInput = newUsernameEl ? newUsernameEl.value.trim() : '';
@@ -1596,7 +1668,7 @@ safeSubmit('update-profile-form', async (e) => {
     location.reload();
 });
 
-safeSubmit('change-password-form', async (e) => {
+safeSubmit('change-password-form', async () => {
     const oldPass = document.getElementById('old-password').value;
     const newPass = document.getElementById('new-password').value;
     const confirmPass = document.getElementById('confirm-new-password').value;
@@ -1613,6 +1685,7 @@ safeSubmit('change-password-form', async (e) => {
         document.getElementById('change-password-form').reset();
     } finally { btn.innerText = "Update Password"; }
 });
+
 // ==========================================
 // IN-APP CONTACT SYSTEM
 // ==========================================
@@ -1621,7 +1694,8 @@ window.openContactModal = function() {
     const emailInput = document.getElementById('contact-email');
     
     if (auth.currentUser && auth.currentUser.emailVerified) {
-        const displayName = auth.currentUser.displayName ? auth.currentUser.displayName.split(' | ')[1] || auth.currentUser.displayName.split(' | ')[0] : 'User';
+        const parts = (auth.currentUser.displayName || '').split(' | ');
+        const displayName = (parts[1] && parts[1] !== 'N/A') ? parts[1] : (parts[0] || 'User');
         nameInput.value = displayName;
         emailInput.value = auth.currentUser.email;
         emailInput.readOnly = true;
@@ -1641,13 +1715,19 @@ window.closeContactModal = function() {
 };
 
 safeSubmit('contact-form', async () => {
+    const rawEmail = document.getElementById('contact-email').value.trim();
+    const emailCheck = validateTrustedEmail(rawEmail);
+    if (!emailCheck.valid) {
+        throw new Error(emailCheck.error);
+    }
+
     const btn = document.getElementById('contact-submit-btn');
     btn.innerText = "Sending...";
     btn.disabled = true;
 
     const payload = {
         name: document.getElementById('contact-name').value.trim(),
-        email: document.getElementById('contact-email').value.trim(),
+        email: emailCheck.email,
         subject: document.getElementById('contact-subject').value.trim(),
         message: document.getElementById('contact-message').value.trim(),
         userStatus: (auth.currentUser && auth.currentUser.emailVerified) ? 'Verified Vault User' : 'Login Wall / Guest'
