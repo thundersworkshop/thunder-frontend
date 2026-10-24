@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-import { getAuth, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential, sendEmailVerification } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
+import { getAuth, setPersistence, browserSessionPersistence, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential, sendEmailVerification } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyBP8B2KiK_EWxhLrRgeC6uxy1ItYQNbGC4",
@@ -13,6 +13,14 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+
+// Force session-only persistence & sign out on any fresh browser/URL entry
+setPersistence(auth, browserSessionPersistence);
+if (sessionStorage.getItem('thunder_internal_reload') === 'true') {
+    sessionStorage.removeItem('thunder_internal_reload');
+} else {
+    signOut(auth);
+}
 
 const API_URL = 'https://thunder-backend-esf1.onrender.com/api';
 
@@ -185,6 +193,41 @@ function enforceDateRules() {
     return localDate;
 }
 
+window.updateCommandBar = function(tabName) {
+    const bar = document.getElementById('command-center-bar');
+    const dashBtn = document.getElementById('cmd-dashboard-btn');
+    const sortWrap = document.getElementById('cmd-sort-wrapper');
+    const exportBtn = document.getElementById('cmd-export-btn');
+    const searchBtn = document.getElementById('cmd-search-btn');
+    if (!bar) return;
+
+    // Hide the entire command bar on Dashboard, Data Entry, My Profile, and App Settings
+    if (['dashboard-section', 'entry-section', 'profile-section', 'settings-section'].includes(tabName)) {
+        bar.style.display = 'none';
+        return;
+    }
+
+    bar.style.display = 'flex';
+    if (dashBtn) dashBtn.style.display = 'flex';
+
+    if (tabName === 'search-section') {
+        // Search tab already has its own filter/sort form, only show Dashboard & Export PDF
+        if (sortWrap) sortWrap.style.display = 'none';
+        if (exportBtn) exportBtn.style.display = 'flex';
+        if (searchBtn) searchBtn.style.display = 'none';
+    } else if (tabName === 'audit-section') {
+        // Audit Trail needs Dashboard, Sort, and Export PDF
+        if (sortWrap) sortWrap.style.display = 'flex';
+        if (exportBtn) exportBtn.style.display = 'flex';
+        if (searchBtn) searchBtn.style.display = 'none';
+    } else {
+        // Expense Ledger, Cash Statement, Bank Statement: Show all controls
+        if (sortWrap) sortWrap.style.display = 'flex';
+        if (exportBtn) exportBtn.style.display = 'flex';
+        if (searchBtn) searchBtn.style.display = 'flex';
+    }
+};
+
 window.openTab = function(evt, tabName) {
     let tabContents = document.getElementsByClassName("tab-content");
     for (let i = 0; i < tabContents.length; i++) tabContents[i].classList.remove("active");
@@ -194,6 +237,8 @@ window.openTab = function(evt, tabName) {
     
     document.getElementById(tabName).classList.add("active");
     evt.currentTarget.classList.add("active");
+
+    updateCommandBar(tabName);
 
     if (currentSorts[tabName]) {
         const globalSortEl = document.getElementById('global-sort');
@@ -209,7 +254,7 @@ window.openTab = function(evt, tabName) {
     } else {
         processAndRenderTables();
     }
-}
+};
 
 window.changeGlobalSort = function(val) {
     let activeTab = 'expense-section'; 
@@ -315,6 +360,18 @@ async function loadData() {
 
             if (document.getElementById('opening-cash')) document.getElementById('opening-cash').value = settings.openingCash || 0;
             if (document.getElementById('opening-bank')) document.getElementById('opening-bank').value = settings.openingBank || 0;
+            // Sync saved profile details from MongoDB so Phone/Name never show N/A
+            if (settings.profileUsername || settings.profileFullname || settings.profilePhone) {
+                const dbUser = settings.profileUsername || document.getElementById('profile-username').innerText;
+                const dbName = settings.profileFullname || document.getElementById('profile-fullname').innerText;
+                const dbPhone = settings.profilePhone || document.getElementById('profile-phone').innerText;
+                document.getElementById('profile-username').innerText = dbUser;
+                document.getElementById('profile-fullname').innerText = dbName;
+                document.getElementById('profile-phone').innerText = dbPhone;
+                if (auth.currentUser) {
+                    localStorage.setItem(`thunder_profile_${auth.currentUser.uid}`, `${dbUser} | ${dbName} | ${dbPhone}`);
+                }
+            }
             
         } catch(e) { console.warn("Settings UI Error:", e); }
         
@@ -1654,18 +1711,37 @@ safeSubmit('update-profile-form', async () => {
     }
 
     btn.innerText = "Saving...";
-    let currentUsername = document.getElementById('profile-username').innerText || 'User';
-    let currentName = document.getElementById('profile-fullname').innerText || 'N/A';
-    let currentPhone = document.getElementById('profile-phone').innerText || 'N/A';
-    
-    const finalUsername = newUsernameInput ? newUsernameInput : currentUsername;
-    const finalName = newNameInput ? newNameInput : currentName;
-    const finalPhone = newPhoneInput ? newPhoneInput : currentPhone;
-    const combinedProfile = `${finalUsername} | ${finalName} | ${finalPhone}`;
-    
-    localStorage.setItem(`thunder_profile_${auth.currentUser.uid}`, combinedProfile);
-    await updateProfile(auth.currentUser, { displayName: combinedProfile });
-    location.reload();
+    try {
+        let currentUsername = document.getElementById('profile-username').innerText;
+        let currentName = document.getElementById('profile-fullname').innerText;
+        let currentPhone = document.getElementById('profile-phone').innerText;
+
+        const finalUsername = newUsernameInput || (currentUsername !== '...' ? currentUsername : 'User');
+        const finalName = newNameInput || (currentName !== '...' ? currentName : 'N/A');
+        const finalPhone = newPhoneInput || (currentPhone !== '...' ? currentPhone : 'N/A');
+        const combinedProfile = `${finalUsername} | ${finalName} | ${finalPhone}`;
+        
+        // Save to localStorage, Firebase Auth, AND MongoDB Settings permanently
+        localStorage.setItem(`thunder_profile_${auth.currentUser.uid}`, combinedProfile);
+        await updateProfile(auth.currentUser, { displayName: combinedProfile });
+        await fetch(`${API_URL}/settings`, {
+            method: 'POST',
+            headers: getAuthHeaders(true),
+            body: JSON.stringify({
+                profileUsername: finalUsername,
+                profileFullname: finalName,
+                profilePhone: finalPhone
+            })
+        });
+
+        document.getElementById('profile-username').innerText = finalUsername;
+        document.getElementById('profile-fullname').innerText = finalName;
+        document.getElementById('profile-phone').innerText = finalPhone;
+        document.getElementById('update-profile-form').reset();
+        customAlert("Profile details updated permanently!", "success");
+    } finally {
+        btn.innerText = "Save Details";
+    }
 });
 
 safeSubmit('change-password-form', async () => {
@@ -1690,19 +1766,35 @@ safeSubmit('change-password-form', async () => {
 // IN-APP CONTACT SYSTEM
 // ==========================================
 window.openContactModal = function() {
+    const phoneInput = document.getElementById('contact-phone');
     const nameInput = document.getElementById('contact-name');
     const emailInput = document.getElementById('contact-email');
     
     if (auth.currentUser && auth.currentUser.emailVerified) {
-        const parts = (auth.currentUser.displayName || '').split(' | ');
-        const displayName = (parts[1] && parts[1] !== 'N/A') ? parts[1] : (parts[0] || 'User');
-        nameInput.value = displayName;
+        const uiFullname = document.getElementById('profile-fullname')?.innerText || 'User';
+        const uiPhone = document.getElementById('profile-phone')?.innerText || 'N/A';
+
+        nameInput.value = (uiFullname !== '...' && uiFullname !== 'N/A') ? uiFullname : '';
+        phoneInput.value = (uiPhone !== '...' && uiPhone !== 'N/A') ? uiPhone : '';
         emailInput.value = auth.currentUser.email;
-        emailInput.readOnly = true;
+
+        // Lock fields for logged-in users
+        [phoneInput, nameInput, emailInput].forEach(f => {
+            if (f) {
+                f.readOnly = true;
+                f.style.opacity = '0.65';
+                f.style.cursor = 'not-allowed';
+            }
+        });
     } else {
-        nameInput.value = '';
-        emailInput.value = '';
-        emailInput.readOnly = false;
+        [phoneInput, nameInput, emailInput].forEach(f => {
+            if (f) {
+                f.value = '';
+                f.readOnly = false;
+                f.style.opacity = '1';
+                f.style.cursor = 'text';
+            }
+        });
     }
     
     document.getElementById('contact-modal').style.display = 'flex';
@@ -1721,16 +1813,32 @@ safeSubmit('contact-form', async () => {
         throw new Error(emailCheck.error);
     }
 
+    const phoneVal = document.getElementById('contact-phone').value.trim();
+    if (!/^\d{10}$/.test(phoneVal)) {
+        throw new Error("Phone number must be exactly 10 digits.");
+    }
+
     const btn = document.getElementById('contact-submit-btn');
     btn.innerText = "Sending...";
     btn.disabled = true;
 
+    const nameVal = document.getElementById('contact-name').value.trim();
+    let formattedName = nameVal;
+    let userStatusTag = 'Login Wall / Guest';
+
+    if (auth.currentUser && auth.currentUser.emailVerified) {
+        formattedName = `${nameVal} (📞 ${phoneVal})`;
+        userStatusTag = 'Verified Vault User';
+    } else {
+        formattedName = `${nameVal} (📞 ${phoneVal} - Guest)`;
+    }
+
     const payload = {
-        name: document.getElementById('contact-name').value.trim(),
+        name: formattedName,
         email: emailCheck.email,
         subject: document.getElementById('contact-subject').value.trim(),
         message: document.getElementById('contact-message').value.trim(),
-        userStatus: (auth.currentUser && auth.currentUser.emailVerified) ? 'Verified Vault User' : 'Login Wall / Guest'
+        userStatus: userStatusTag
     };
 
     try {
