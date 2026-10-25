@@ -571,7 +571,8 @@
                                 style="margin-bottom: 10px;">
                             <input type="text" id="update-fullname" placeholder="New Full Name"
                                 style="margin-bottom: 10px;">
-                            <input type="tel" id="update-phone" placeholder="New Phone Number"
+                            <input type="tel" id="update-phone" placeholder="New 10-Digit Phone Number" maxlength="10"
+                                oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10);"
                                 style="margin-bottom: 10px;">
                             <button type="submit" class="submit-btn" style="width: 100%;">Save Details</button>
                         </form>

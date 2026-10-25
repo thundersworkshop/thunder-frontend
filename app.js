@@ -1471,7 +1471,7 @@ if (formSignup) {
         const btn = document.getElementById('btn-signup');
         const errorEl = document.getElementById('error-signup');
 
-        // Block disposable/temp emails & '+' aliases before account creation
+        // 1. Block disposable/temp emails & '+' aliases
         const emailCheck = validateTrustedEmail(rawEmail);
         if (!emailCheck.valid) {
             errorEl.innerText = emailCheck.error;
@@ -1479,6 +1479,13 @@ if (formSignup) {
             return;
         }
         const email = emailCheck.email;
+
+        // 2. Enforce strict 10-digit phone number on Sign Up
+        if (!/^\d{10}$/.test(phone)) {
+            errorEl.innerText = "Phone number must be exactly 10 digits.";
+            errorEl.style.display = 'block';
+            return;
+        }
         
         if (password !== confirmPass) {
             errorEl.innerText = "Passwords do not match!";
@@ -1710,6 +1717,11 @@ safeSubmit('update-profile-form', async () => {
         throw new Error("Enter a username, full name, or phone number to update.");
     }
 
+    // Enforce strict 10-digit phone number when updating profile
+    if (newPhoneInput && !/^\d{10}$/.test(newPhoneInput)) {
+        throw new Error("Phone number must be exactly 10 digits.");
+    }
+
     btn.innerText = "Saving...";
     try {
         let currentUsername = document.getElementById('profile-username').innerText;
@@ -1721,7 +1733,6 @@ safeSubmit('update-profile-form', async () => {
         const finalPhone = newPhoneInput || (currentPhone !== '...' ? currentPhone : 'N/A');
         const combinedProfile = `${finalUsername} | ${finalName} | ${finalPhone}`;
         
-        // Save to localStorage, Firebase Auth, AND MongoDB Settings permanently
         localStorage.setItem(`thunder_profile_${auth.currentUser.uid}`, combinedProfile);
         await updateProfile(auth.currentUser, { displayName: combinedProfile });
         await fetch(`${API_URL}/settings`, {

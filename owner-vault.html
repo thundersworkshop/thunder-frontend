@@ -40,7 +40,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
+        import { getAuth, setPersistence, browserSessionPersistence, GoogleAuthProvider, signInWithPopup, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBP8B2KiK_EWxhLrRgeC6uxy1ItYQNbGC4",
@@ -53,11 +53,31 @@
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
+        setPersistence(auth, browserSessionPersistence);
+        signOut(auth); // Always require fresh authentication on page load
+
+        // 5-Minute Inactivity Auto-Logout for Owner Vault
+        let ownerIdleTimer;
+        const resetOwnerIdle = () => {
+            clearTimeout(ownerIdleTimer);
+            if (auth.currentUser) {
+                ownerIdleTimer = setTimeout(() => {
+                    signOut(auth).then(() => window.location.reload());
+                }, 5 * 60 * 1000);
+            }
+        };
+        ['mousemove', 'keydown', 'click', 'touchstart'].forEach(e => window.addEventListener(e, resetOwnerIdle));
+
         const provider = new GoogleAuthProvider();
         const API_URL = 'https://thunder-backend-esf1.onrender.com/api';
 
         let ownerToken = null;
         let masterPin = null;
+
+        // XSS Protection Helper: Converts any HTML/script tags into safe plain text
+        const escapeHTML = (str) => String(str || '').replace(/[&<>"']/g, m => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        }[m]));
 
         document.getElementById('google-login-btn').addEventListener('click', async () => {
             const pin = document.getElementById('owner-pin').value.trim();
@@ -122,25 +142,27 @@
                 return;
             }
 
-            container.innerHTML = data.map(t => `
+            container.innerHTML = data.map(t => {
+                const isVerified = (t.userStatus || '').includes('Verified');
+                return `
                 <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.08); padding: 18px; border-radius: 12px; display: flex; flex-direction: column; gap: 8px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
                         <div>
-                            <strong style="color: #f8fafc; font-size: 15px;">${t.subject}</strong>
-                            <span style="background: ${t.userStatus.includes('Verified') ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)'}; color: ${t.userStatus.includes('Verified') ? '#10b981' : '#f59e0b'}; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; margin-left: 8px;">${t.userStatus}</span>
+                            <strong style="color: #f8fafc; font-size: 15px;">${escapeHTML(t.subject)}</strong>
+                            <span style="background: ${isVerified ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)'}; color: ${isVerified ? '#10b981' : '#f59e0b'}; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; margin-left: 8px;">${escapeHTML(t.userStatus)}</span>
                         </div>
                         <span style="color: #94a3b8; font-size: 11px;">${new Date(t.createdAt).toLocaleString()}</span>
                     </div>
                     <div style="font-size: 12px; color: #38bdf8;">
-                        From: <strong>${t.name}</strong> (${t.email})
+                        From: <strong>${escapeHTML(t.name)}</strong> (${escapeHTML(t.email)})
                     </div>
-                    <p style="color: #e2e8f0; font-size: 13px; line-height: 1.5; background: rgba(0,0,0,0.25); padding: 12px; border-radius: 8px; margin-top: 4px; white-space: pre-wrap;">${t.message}</p>
+                    <p style="color: #e2e8f0; font-size: 13px; line-height: 1.5; background: rgba(0,0,0,0.25); padding: 12px; border-radius: 8px; margin-top: 4px; white-space: pre-wrap;">${escapeHTML(t.message)}</p>
                     <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 6px;">
-                        <a href="mailto:${t.email}?subject=Re: ${encodeURIComponent(t.subject)}" class="secondary-btn" style="text-decoration: none; padding: 6px 14px; font-size: 11px;">↩️ Reply via Email</a>
-                        <button class="del-btn" onclick="deleteTicket('${t._id}')" style="padding: 6px 14px; font-size: 11px;">✅ Resolve & Delete</button>
+                        <a href="mailto:${encodeURIComponent(t.email || '')}?subject=Re: ${encodeURIComponent(t.subject || '')}" class="secondary-btn" style="text-decoration: none; padding: 6px 14px; font-size: 11px;">↩️ Reply via Email</a>
+                        <button class="del-btn" onclick="deleteTicket('${escapeHTML(t._id)}')" style="padding: 6px 14px; font-size: 11px;">✅ Resolve & Delete</button>
                     </div>
                 </div>
-            `).join('');
+            `}).join('');
         };
 
         window.deleteTicket = async function(id) {
