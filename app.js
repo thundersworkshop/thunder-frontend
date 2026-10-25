@@ -1819,15 +1819,26 @@ safeSubmit('contact-form', async () => {
     }
 
     const btn = document.getElementById('contact-submit-btn');
+    if (btn.disabled) return; // Prevent double-clicks
     btn.innerText = "Sending...";
     btn.disabled = true;
 
     const nameVal = document.getElementById('contact-name').value.trim();
+    
+    // Extract real username directly from Firebase Auth displayName (format: Username | FullName | Phone)
+    let extractedUsername = 'User';
+    if (auth.currentUser && auth.currentUser.displayName) {
+        const parts = auth.currentUser.displayName.split(' | ');
+        if (parts[0] && parts[0] !== '...' && parts[0] !== 'N/A') {
+            extractedUsername = parts[0];
+        }
+    }
+
     let formattedName = nameVal;
     let userStatusTag = 'Login Wall / Guest';
 
     if (auth.currentUser && auth.currentUser.emailVerified) {
-        formattedName = `${nameVal} (📞 ${phoneVal})`;
+        formattedName = `${nameVal} (@${extractedUsername} | 📞 ${phoneVal})`;
         userStatusTag = 'Verified Vault User';
     } else {
         formattedName = `${nameVal} (📞 ${phoneVal} - Guest)`;
