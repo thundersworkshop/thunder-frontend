@@ -968,6 +968,13 @@ window.cloneEntry = function(id) {
 }
 
 function renderTables(transactions, auditLogs, activeTab) {
+    // Deduplicate by _id so overlapping loadData() calls can never render the same row twice
+    const seenTxIds = new Set();
+    transactions = transactions.filter(t => t && t._id && !seenTxIds.has(t._id) && seenTxIds.add(t._id));
+
+    const seenAuditIds = new Set();
+    auditLogs = auditLogs.filter(l => l && l._id && !seenAuditIds.has(l._id) && seenAuditIds.add(l._id));
+
     document.getElementById('expense-table-body').innerHTML = '';
     document.getElementById('cash-table-body').innerHTML = '';
     document.getElementById('bank-table-body').innerHTML = '';
@@ -1262,15 +1269,25 @@ window.deleteCategory = async function(id) {
 
 const safeSubmit = (formId, asyncLogic) => {
     const form = document.getElementById(formId);
-    if(form) {
-        form.addEventListener('submit', async (e) => {
+    if (form) {
+        form.onsubmit = async (e) => {
             e.preventDefault();
+            // Global anti-duplicate lock: ignore if this form is already submitting
+            if (form.dataset.submitting === 'true') return;
+            form.dataset.submitting = 'true';
+
+            const submitBtn = form.querySelector('button[type="submit"]');
+            if (submitBtn) submitBtn.disabled = true;
+
             try {
                 await asyncLogic(e);
             } catch (err) {
                 customAlert(`Error: ${err.message}`, "error");
+            } finally {
+                form.dataset.submitting = 'false';
+                if (submitBtn) submitBtn.disabled = false;
             }
-        });
+        };
     }
 };
 
