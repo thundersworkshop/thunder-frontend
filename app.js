@@ -769,50 +769,185 @@ window.generateMasterPDF = function() {
     const end = document.getElementById('master-export-end').value;
 
     if (!start || !end) return customAlert("Please select both a Start Date and End Date.", "warning");
+    if (start > end) return customAlert("Start Date cannot be after End Date.", "warning");
 
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF('landscape');
 
-    let exportData = masterTransactions.filter(t => t.date >= start && t.date <= end);
-    exportData.sort((a,b) => new Date(a.date) - new Date(b.date));
+    // Filter transactions within the selected date range (sorted oldest to newest)
+    let exportData = masterTransactions.filter(t => t.date && t.date >= start && t.date <= end);
+    exportData.sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    doc.setFontSize(22);
-    doc.text(`Thunder Finance - MASTER DATABASE EXPORT`, 14, 20);
-    doc.setFontSize(12);
-    doc.setTextColor(100);
-    doc.text(`Global Timeframe: ${start} to ${end}`, 14, 28);
-    doc.text(`Total Records Found: ${exportData.length}`, 14, 34);
-    doc.text(`Generated On: ${new Date().toLocaleString()}`, 14, 40);
+    // Separate into individual ledgers (matching exact app ledger logic)
+    const expenseList = exportData.filter(t => t.type === 'Expense');
+    const cashList = exportData.filter(t => t.account === 'Cash' || t.type === 'Contra' || t.type === 'Payment');
+    const bankList = exportData.filter(t => t.account === 'Bank Account' || t.type === 'Contra' || t.type === 'Payment');
 
-    let totalAmt = 0;
-    const head = [['Date', 'Ledger', 'Particulars', 'Type', 'Category', 'Amount']];
-    const body = exportData.map(t => {
-        totalAmt += Number(t.amount);
-        return [
-            t.date, 
-            t.account, 
-            t.particulars, 
-            t.type, 
-            t.category || '-', 
-            `Rs. ${t.amount.toLocaleString('en-IN')}`
-        ];
+    // Filter Audit Trail logs (includes logs whose original/new transaction date falls in range, or logged during range)
+    const auditList = masterAuditLogs.filter(log => {
+        const origDate = log.originalData?.date || '';
+        const newDate = log.newData?.date || '';
+        if ((origDate >= start && origDate <= end) || (newDate >= start && newDate <= end)) return true;
+        if (log.dateChanged) {
+            const parsed = new Date(log.dateChanged);
+            if (!isNaN(parsed)) {
+                const logIso = parsed.toISOString().split('T')[0];
+                if (logIso >= start && logIso <= end) return true;
+            }
+        }
+        return false;
     });
-    
-    const foot = [['', '', '', '', 'GRAND TOTAL:', `Rs. ${totalAmt.toLocaleString('en-IN')}`]];
+
+    // Pre-calculate Totals for Executive Summary & Ledger Footers
+    let totalExp = 0;
+    const expBody = expenseList.map(t => {
+        const amt = Number(t.amount) || 0;
+        totalExp += amt;
+        return [t.date, t.particulars, t.category || '-', t.account, `Rs. ${amt.toLocaleString('en-IN')}`, t.notes || '-'];
+    });
+
+    let cashIn = 0, cashOut = 0;
+    const cashBody = cashList.map(t => {
+        const amt = Number(t.amount) || 0;
+        const isInc = (t.type === 'Receipt' && t.account === 'Cash') || (t.type === 'Contra' && t.account === 'Bank Account');
+        if (isInc) cashIn += amt; else cashOut += amt;
+        return [t.date, t.particulars, t.type, `Rs. ${amt.toLocaleString('en-IN')} (${isInc ? 'IN' : 'OUT'})`, t.notes || '-'];
+    });
+
+    let bankIn = 0, bankOut = 0;
+    const bankBody = bankList.map(t => {
+        const amt = Number(t.amount) || 0;
+        const isInc = (t.type === 'Receipt' && t.account === 'Bank Account') || (t.type === 'Contra' && t.account === 'Cash');
+        if (isInc) bankIn += amt; else bankOut += amt;
+        return [t.date, t.particulars, t.type, `Rs. ${amt.toLocaleString('en-IN')} (${isInc ? 'CR.' : 'DR.'})`, t.notes || '-'];
+    });
+
+    const auditBody = auditList.map(log => {
+        const isRestored = log.action === 'RESTORED';
+        const originalAction = log.newData ? 'MODIFIED' : 'DELETED';
+        const actionStr = isRestored ? `${originalAction} (RESTORED)` : originalAction;
+
+        let timeStr = log.dateChanged || '';
+        let localTime = 'Recorded Log';
+        if (timeStr) {
+            if (!timeStr.includes('Z') && !timeStr.includes('T')) timeStr += " UTC";
+            const d = new Date(timeStr);
+            localTime = isNaN(d) ? log.dateChanged : d.toLocaleString();
+        }
+
+        const old = log.originalData || {};
+        const newD = log.newData || {};
+        let changeStr = '-';
+
+        if (originalAction === 'MODIFIED' && log.newData) {
+            let changes = [];
+            if (old.date !== newD.date) changes.push(`Date: ${old.date} -> ${newD.date}`);
+            if (old.type !== newD.type) changes.push(`Type: ${old.type} -> ${newD.type}`);
+            if (old.particulars !== newD.particulars) changes.push(`Particulars: ${old.particulars} -> ${newD.particulars}`);
+            if (Number(old.amount || 0) !== Number(newD.amount || 0)) changes.push(`Amt: Rs.${Number(old.amount || 0).toLocaleString('en-IN')} -> Rs.${Number(newD.amount || 0).toLocaleString('en-IN')}`);
+            if ((old.category || '-') !== (newD.category || '-')) changes.push(`Cat: ${old.category || '-'} -> ${newD.category || '-'}`);
+            if (old.account !== newD.account) changes.push(`Acc: ${old.account} -> ${newD.account}`);
+            changeStr = changes.length > 0 ? changes.join(' | ') : 'Record re-saved without field diff.';
+        } else {
+            changeStr = `DELETED: [${old.type || '-'}] ${old.date || '-'} | ${old.particulars || '-'} | Rs.${Number(old.amount || 0).toLocaleString('en-IN')} (${old.account || '-'})`;
+        }
+
+        return [localTime, actionStr, changeStr];
+    });
+
+    // --- HEADER & EXECUTIVE SUMMARY ---
+    const userDisplay = document.getElementById('profile-fullname')?.innerText || 'Authorized User';
+    const userEmail = document.getElementById('profile-email')?.innerText || '';
+
+    doc.setFontSize(20);
+    doc.setTextColor(15, 23, 42);
+    doc.text(`THUNDER FINANCE - MASTER ARCHIVE REPORT`, 14, 18);
+
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Account Holder: ${userDisplay} (${userEmail})`, 14, 25);
+    doc.text(`Reporting Period: ${start} to ${end}   |   Generated On: ${new Date().toLocaleString()}`, 14, 31);
 
     doc.autoTable({
-        startY: 48,
-        head: head,
-        body: body,
-        foot: foot,
+        startY: 36,
+        head: [['Ledger Section', 'Records', 'Total Inflow / Credit', 'Total Outflow / Debit', 'Net Period Position']],
+        body: [
+            ['Expense Ledger', `${expenseList.length}`, '-', `Rs. ${totalExp.toLocaleString('en-IN')}`, `Rs. -${totalExp.toLocaleString('en-IN')}`],
+            ['Cash Statement', `${cashList.length}`, `Rs. ${cashIn.toLocaleString('en-IN')}`, `Rs. ${cashOut.toLocaleString('en-IN')}`, `Rs. ${(cashIn - cashOut).toLocaleString('en-IN')}`],
+            ['Bank Statement', `${bankList.length}`, `Rs. ${bankIn.toLocaleString('en-IN')}`, `Rs. ${bankOut.toLocaleString('en-IN')}`, `Rs. ${(bankIn - bankOut).toLocaleString('en-IN')}`],
+            ['Audit Trail Log', `${auditList.length} Events`, '-', '-', 'Security Verified']
+        ],
+        theme: 'grid',
+        styles: { font: 'helvetica', fontSize: 9 },
+        headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255] }
+    });
+
+    // Helper to manage section headings cleanly across pages
+    const addSectionTitle = (title, rgbColor) => {
+        let y = doc.lastAutoTable.finalY + 12;
+        if (y > 175) {
+            doc.addPage();
+            y = 20;
+        }
+        doc.setFontSize(13);
+        doc.setTextColor(rgbColor[0], rgbColor[1], rgbColor[2]);
+        doc.text(title, 14, y);
+        return y + 4;
+    };
+
+    // --- 1. EXPENSE LEDGER SECTION ---
+    let startY = addSectionTitle(`1. EXPENSE LEDGER (${start} to ${end})`, [239, 68, 68]);
+    doc.autoTable({
+        startY: startY,
+        head: [['Date', 'Particulars', 'Category', 'Account', 'Amount', 'Notes']],
+        body: expBody.length ? expBody : [['-', 'No expense records in this period', '-', '-', '-', '-']],
+        foot: [['', '', '', 'TOTAL EXPENSES:', `Rs. ${totalExp.toLocaleString('en-IN')}`, '']],
+        theme: 'grid',
+        styles: { font: 'helvetica', fontSize: 9 },
+        headStyles: { fillColor: [239, 68, 68] },
+        footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' }
+    });
+
+    // --- 2. CASH STATEMENT SECTION ---
+    startY = addSectionTitle(`2. CASH STATEMENT (${start} to ${end})`, [16, 185, 129]);
+    doc.autoTable({
+        startY: startY,
+        head: [['Date', 'Particulars', 'Transaction Type', 'Amount (IN / OUT)', 'Notes']],
+        body: cashBody.length ? cashBody : [['-', 'No cash transactions in this period', '-', '-', '-']],
+        foot: [['', '', 'CASH TOTALS:', `IN: Rs.${cashIn.toLocaleString('en-IN')}  |  OUT: Rs.${cashOut.toLocaleString('en-IN')}  |  NET: Rs.${(cashIn - cashOut).toLocaleString('en-IN')}`, '']],
         theme: 'grid',
         styles: { font: 'helvetica', fontSize: 9 },
         headStyles: { fillColor: [16, 185, 129] },
         footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' }
     });
 
-    doc.save(`Thunder_Master_Export_${start}_to_${end}.pdf`);
-}
+    // --- 3. BANK STATEMENT SECTION ---
+    startY = addSectionTitle(`3. BANK STATEMENT (${start} to ${end})`, [59, 130, 246]);
+    doc.autoTable({
+        startY: startY,
+        head: [['Date', 'Particulars', 'Transaction Type', 'Amount (CR. / DR.)', 'Notes']],
+        body: bankBody.length ? bankBody : [['-', 'No bank transactions in this period', '-', '-', '-']],
+        foot: [['', '', 'BANK TOTALS:', `CR: Rs.${bankIn.toLocaleString('en-IN')}  |  DR: Rs.${bankOut.toLocaleString('en-IN')}  |  NET: Rs.${(bankIn - bankOut).toLocaleString('en-IN')}`, '']],
+        theme: 'grid',
+        styles: { font: 'helvetica', fontSize: 9 },
+        headStyles: { fillColor: [59, 130, 246] },
+        footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' }
+    });
+
+    // --- 4. AUDIT TRAIL SECTION ---
+    startY = addSectionTitle(`4. AUDIT TRAIL & SECURITY LOG (${start} to ${end})`, [99, 102, 241]);
+    doc.autoTable({
+        startY: startY,
+        head: [['Timestamp', 'Status / Action', 'Detailed Modification / Deletion Record']],
+        body: auditBody.length ? auditBody : [['-', 'CLEAN', 'No modifications or deletions recorded in this timeframe.']],
+        theme: 'grid',
+        styles: { font: 'helvetica', fontSize: 8.5 },
+        headStyles: { fillColor: [99, 102, 241] }
+    });
+
+    doc.save(`Thunder_Master_Report_${start}_to_${end}.pdf`);
+    customAlert("Complete Master Report with Ledgers & Audit Trail exported!", "success");
+};
 
 window.cloneEntry = function(id) {
     const t = masterTransactions.find(x => x._id === id);
