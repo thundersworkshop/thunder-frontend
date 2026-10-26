@@ -1,5 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-import { getAuth, setPersistence, browserSessionPersistence, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential, sendEmailVerification } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
+import { getAuth, setPersistence, browserSessionPersistence, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendEmailVerification, updatePassword, updateProfile, EmailAuthProvider, reauthenticateWithCredential, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
+
 
 const firebaseConfig = {
     apiKey: "AIzaSyBP8B2KiK_EWxhLrRgeC6uxy1ItYQNbGC4",
@@ -427,7 +428,7 @@ function calculateBalances(transactions, settings) {
         if (!t || !t.date) return; 
         
         const amt = Number(t.amount) || 0; 
-        const acc = t.account || '';       
+        const acc = t.account || '';        
 
         if (t.type === 'Receipt') { 
             if (acc === 'Cash') currentCash += amt; 
@@ -774,16 +775,13 @@ window.generateMasterPDF = function() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF('landscape');
 
-    // Filter transactions within the selected date range (sorted oldest to newest)
     let exportData = masterTransactions.filter(t => t.date && t.date >= start && t.date <= end);
     exportData.sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    // Separate into individual ledgers (matching exact app ledger logic)
     const expenseList = exportData.filter(t => t.type === 'Expense');
     const cashList = exportData.filter(t => t.account === 'Cash' || t.type === 'Contra' || t.type === 'Payment');
     const bankList = exportData.filter(t => t.account === 'Bank Account' || t.type === 'Contra' || t.type === 'Payment');
 
-    // Filter Audit Trail logs (includes logs whose original/new transaction date falls in range, or logged during range)
     const auditList = masterAuditLogs.filter(log => {
         const origDate = log.originalData?.date || '';
         const newDate = log.newData?.date || '';
@@ -798,7 +796,6 @@ window.generateMasterPDF = function() {
         return false;
     });
 
-    // Pre-calculate Totals for Executive Summary & Ledger Footers
     let totalExp = 0;
     const expBody = expenseList.map(t => {
         const amt = Number(t.amount) || 0;
@@ -855,7 +852,6 @@ window.generateMasterPDF = function() {
         return [localTime, actionStr, changeStr];
     });
 
-    // --- HEADER & EXECUTIVE SUMMARY ---
     const userDisplay = document.getElementById('profile-fullname')?.innerText || 'Authorized User';
     const userEmail = document.getElementById('profile-email')?.innerText || '';
 
@@ -882,7 +878,6 @@ window.generateMasterPDF = function() {
         headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255] }
     });
 
-    // Helper to manage section headings cleanly across pages
     const addSectionTitle = (title, rgbColor) => {
         let y = doc.lastAutoTable.finalY + 12;
         if (y > 175) {
@@ -895,7 +890,6 @@ window.generateMasterPDF = function() {
         return y + 4;
     };
 
-    // --- 1. EXPENSE LEDGER SECTION ---
     let startY = addSectionTitle(`1. EXPENSE LEDGER (${start} to ${end})`, [239, 68, 68]);
     doc.autoTable({
         startY: startY,
@@ -908,7 +902,6 @@ window.generateMasterPDF = function() {
         footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' }
     });
 
-    // --- 2. CASH STATEMENT SECTION ---
     startY = addSectionTitle(`2. CASH STATEMENT (${start} to ${end})`, [16, 185, 129]);
     doc.autoTable({
         startY: startY,
@@ -921,7 +914,6 @@ window.generateMasterPDF = function() {
         footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' }
     });
 
-    // --- 3. BANK STATEMENT SECTION ---
     startY = addSectionTitle(`3. BANK STATEMENT (${start} to ${end})`, [59, 130, 246]);
     doc.autoTable({
         startY: startY,
@@ -934,7 +926,6 @@ window.generateMasterPDF = function() {
         footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' }
     });
 
-    // --- 4. AUDIT TRAIL SECTION ---
     startY = addSectionTitle(`4. AUDIT TRAIL & SECURITY LOG (${start} to ${end})`, [99, 102, 241]);
     doc.autoTable({
         startY: startY,
@@ -968,7 +959,6 @@ window.cloneEntry = function(id) {
 }
 
 function renderTables(transactions, auditLogs, activeTab) {
-    // Deduplicate by _id so overlapping loadData() calls can never render the same row twice
     const seenTxIds = new Set();
     transactions = transactions.filter(t => t && t._id && !seenTxIds.has(t._id) && seenTxIds.add(t._id));
 
@@ -1272,7 +1262,6 @@ const safeSubmit = (formId, asyncLogic) => {
     if (form) {
         form.onsubmit = async (e) => {
             e.preventDefault();
-            // Global anti-duplicate lock: ignore if this form is already submitting
             if (form.dataset.submitting === 'true') return;
             form.dataset.submitting = 'true';
 
@@ -1576,7 +1565,6 @@ onAuthStateChanged(auth, async (user) => {
         document.getElementById('global-login-wall').style.display = 'none';
         document.querySelector('.app-window').style.display = 'flex'; 
         
-        // Smart Profile Backup & Restore (Prevents Google Sign-In from causing 'N/A')
         let rawDisplay = user.displayName || '';
         const backupKey = `thunder_profile_${user.uid}`;
 
@@ -1608,7 +1596,7 @@ onAuthStateChanged(auth, async (user) => {
     }
 });
 
-// SIGN UP FORM (With Strict Official Email Protection against Fake Accounts)
+// SIGN UP FORM
 const formSignup = document.getElementById('form-signup');
 if (formSignup) {
     formSignup.addEventListener('submit', async (e) => {
@@ -1623,7 +1611,6 @@ if (formSignup) {
         const btn = document.getElementById('btn-signup');
         const errorEl = document.getElementById('error-signup');
 
-        // 1. Block disposable/temp emails & '+' aliases
         const emailCheck = validateTrustedEmail(rawEmail);
         if (!emailCheck.valid) {
             errorEl.innerText = emailCheck.error;
@@ -1632,7 +1619,6 @@ if (formSignup) {
         }
         const email = emailCheck.email;
 
-        // 2. Enforce strict 10-digit phone number on Sign Up
         if (!/^\d{10}$/.test(phone)) {
             errorEl.innerText = "Phone number must be exactly 10 digits.";
             errorEl.style.display = 'block';
@@ -1698,7 +1684,7 @@ if (formSignup) {
     });
 }
 
-// LOG IN FORM (With Official Email Validation)
+// LOG IN FORM
 const formLogin = document.getElementById('form-login');
 if (formLogin) {
     formLogin.addEventListener('submit', async (e) => {
@@ -1738,6 +1724,37 @@ if (formLogin) {
             errorEl.style.display = 'block';
             btn.innerText = "Access Vault";
             btn.disabled = false;
+        }
+    });
+}
+
+// FORGOT PASSWORD HANDLER (Choice 1)
+const btnForgotPass = document.getElementById('btn-forgot-password');
+if (btnForgotPass) {
+    btnForgotPass.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('login-email').value.trim();
+        const errorEl = document.getElementById('error-login');
+
+        if (!email) {
+            errorEl.style.color = '#f59e0b';
+            errorEl.innerText = "Please enter your Registered Email Address in the box above first, then click Forgot Password.";
+            errorEl.style.display = 'block';
+            return;
+        }
+
+        try {
+            btnForgotPass.innerText = "Sending Reset Link...";
+            await sendPasswordResetEmail(auth, email);
+            errorEl.style.color = '#10b981';
+            errorEl.innerText = `✅ Password reset link sent to ${email}! Check your Inbox (and Spam folder) to set a new password.`;
+            errorEl.style.display = 'block';
+        } catch (err) {
+            errorEl.style.color = '#ef4444';
+            errorEl.innerText = "Error: Could not send reset email. Please check the email address.";
+            errorEl.style.display = 'block';
+        } finally {
+            btnForgotPass.innerText = "Forgot Password?";
         }
     });
 }
@@ -1856,7 +1873,7 @@ document.getElementById('cancel-clean-btn').addEventListener('click', async () =
 });
 
 // ==========================================
-// PROFILE LOGIC (Saves to Firebase + Local Backup)
+// PROFILE LOGIC
 // ==========================================
 safeSubmit('update-profile-form', async () => {
     const btn = document.getElementById('update-profile-form').querySelector('button');
@@ -1869,7 +1886,6 @@ safeSubmit('update-profile-form', async () => {
         throw new Error("Enter a username, full name, or phone number to update.");
     }
 
-    // Enforce strict 10-digit phone number when updating profile
     if (newPhoneInput && !/^\d{10}$/.test(newPhoneInput)) {
         throw new Error("Phone number must be exactly 10 digits.");
     }
@@ -1941,7 +1957,6 @@ window.openContactModal = function() {
         phoneInput.value = (uiPhone !== '...' && uiPhone !== 'N/A') ? uiPhone : '';
         emailInput.value = auth.currentUser.email;
 
-        // Lock fields for logged-in users
         [phoneInput, nameInput, emailInput].forEach(f => {
             if (f) {
                 f.readOnly = true;
@@ -1982,13 +1997,12 @@ safeSubmit('contact-form', async () => {
     }
 
     const btn = document.getElementById('contact-submit-btn');
-    if (btn.disabled) return; // Prevent double-clicks
+    if (btn.disabled) return;
     btn.innerText = "Sending...";
     btn.disabled = true;
 
     const nameVal = document.getElementById('contact-name').value.trim();
     
-    // Extract real username directly from Firebase Auth displayName (format: Username | FullName | Phone)
     let extractedUsername = 'User';
     if (auth.currentUser && auth.currentUser.displayName) {
         const parts = auth.currentUser.displayName.split(' | ');
