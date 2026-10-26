@@ -396,3 +396,34 @@ input[type="number"] {
     
     #category-table-body td::before { display: none !important; } 
 }
+/* ==========================================
+   MOBILE-ONLY FIXES (Login Wall & Editor Form)
+   ========================================== */
+@media (max-width: 768px) {
+    /* Fix 1: Prevent Sign-Up form from cutting off top buttons on phone screens */
+    #global-login-wall {
+        align-items: flex-start !important;
+        padding: 15px 12px 40px 12px !important;
+    }
+
+    #global-login-wall > div {
+        margin-top: 10px !important;
+        margin-bottom: 20px !important;
+    }
+
+    #global-login-wall > div > div {
+        padding: 24px 18px !important;
+    }
+
+    /* Fix 2: Remove left blank space in Editor Credentials on phone view */
+    #editor-creds-form {
+        align-items: stretch !important;
+    }
+
+    #editor-creds-form .flex-1,
+    #editor-creds-form input,
+    #editor-creds-form button {
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+}

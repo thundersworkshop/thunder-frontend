@@ -115,6 +115,9 @@
                 loginBtn.className = 'secondary-btn';
                 loginBtn.style = 'flex: 1; margin: 0; background: transparent; border: 1px solid #94a3b8; color: var(--text-main);';
             }
+
+            // Keep top header & buttons visible when switching tabs on mobile
+            document.getElementById('global-login-wall').scrollTop = 0;
         }
     </script>
 
