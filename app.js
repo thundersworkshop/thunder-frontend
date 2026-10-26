@@ -1,6 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-import { getAuth, setPersistence, browserSessionPersistence, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendEmailVerification, updatePassword, updateProfile, EmailAuthProvider, reauthenticateWithCredential, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
-
+import { getAuth, setPersistence, browserSessionPersistence, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendEmailVerification, updatePassword, updateProfile, EmailAuthProvider, reauthenticateWithCredential } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyBP8B2KiK_EWxhLrRgeC6uxy1ItYQNbGC4",
@@ -15,7 +14,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
-// Force session-only persistence & sign out on any fresh browser/URL entry
 setPersistence(auth, browserSessionPersistence);
 if (sessionStorage.getItem('thunder_internal_reload') === 'true') {
     sessionStorage.removeItem('thunder_internal_reload');
@@ -25,9 +23,6 @@ if (sessionStorage.getItem('thunder_internal_reload') === 'true') {
 
 const API_URL = 'https://thunder-backend-esf1.onrender.com/api';
 
-// ==========================================
-// CUSTOM UI POPUP ENGINE
-// ==========================================
 window.customAlert = function(message, type = 'info') {
     const toast = document.getElementById('custom-toast');
     const msgEl = document.getElementById('toast-message');
@@ -65,9 +60,6 @@ window.customConfirm = function(message) {
     });
 };
 
-// ==========================================
-// RUTHLESS INPUT FILTER (Blocks text in amount fields)
-// ==========================================
 const blockText = (elementId) => {
     const el = document.getElementById(elementId);
     if(el) {
@@ -87,20 +79,11 @@ blockText('edit-amount');
 blockText('opening-cash');
 blockText('opening-bank');
 
-// ==========================================
-// ANTI-SPAM & TRUSTED EMAIL WHITELIST SHIELD
-// Blocks Fake Account Creation & Disposable Emails
-// ==========================================
 const ALLOWED_EMAIL_DOMAINS = [
-    // Google
     'gmail.com', 'googlemail.com',
-    // Microsoft (Global & India)
     'outlook.com', 'outlook.in', 'hotmail.com', 'hotmail.co.in', 'hotmail.co.uk', 'live.com', 'live.in', 'msn.com',
-    // Yahoo (Global & India)
     'yahoo.com', 'yahoo.in', 'yahoo.co.in', 'yahoo.co.uk', 'ymail.com', 'rocketmail.com',
-    // Apple
     'icloud.com', 'me.com', 'mac.com',
-    // Privacy & Recognized Providers
     'proton.me', 'protonmail.com', 'pm.me',
     'zoho.com', 'zohomail.in',
     'rediffmail.com', 'aol.com', 'gmx.com'
@@ -108,16 +91,11 @@ const ALLOWED_EMAIL_DOMAINS = [
 
 function validateTrustedEmail(email) {
     const cleanEmail = (email || '').trim().toLowerCase();
-    
-    // 1. Standard format check (blocks '+' alias spam tricks like user+1@gmail.com)
     const emailRegex = /^[a-z0-9._-]+@[a-z0-9.-]+\.[a-z]{2,}$/;
     if (!emailRegex.test(cleanEmail)) {
         return { valid: false, error: "Invalid email format. Please enter a standard email address without '+' aliases." };
     }
-
     const domain = cleanEmail.split('@')[1] || '';
-
-    // 2. Allow whitelisted providers OR verified educational/government domains
     const isWhitelisted = ALLOWED_EMAIL_DOMAINS.includes(domain);
     const isInstitutional = domain.endsWith('.ac.in') || domain.endsWith('.edu') || domain.endsWith('.edu.in') || domain.endsWith('.gov.in');
 
@@ -127,15 +105,10 @@ function validateTrustedEmail(email) {
             error: "Only official email providers (Gmail, Outlook, Yahoo, iCloud, Proton, Zoho, etc.) are allowed. Temp/disposable emails are strictly blocked." 
         };
     }
-
     return { valid: true, email: cleanEmail };
 }
 
-// ==========================================
-// AUTO-LOGOUT & GLOBAL INACTIVITY TIMER
-// ==========================================
 let logoutTimer;
-
 function resetLogoutTimer() {
     clearTimeout(logoutTimer);
     if (auth.currentUser) {
@@ -152,9 +125,6 @@ function resetLogoutTimer() {
     window.addEventListener(evt, resetLogoutTimer);
 });
 
-// ==========================================
-// GLOBAL STATE & SETUP
-// ==========================================
 let isAdminUnlocked = false; 
 let currentUserToken = null; 
 
@@ -202,7 +172,6 @@ window.updateCommandBar = function(tabName) {
     const searchBtn = document.getElementById('cmd-search-btn');
     if (!bar) return;
 
-    // Hide the entire command bar on Dashboard, Data Entry, My Profile, and App Settings
     if (['dashboard-section', 'entry-section', 'profile-section', 'settings-section'].includes(tabName)) {
         bar.style.display = 'none';
         return;
@@ -212,17 +181,14 @@ window.updateCommandBar = function(tabName) {
     if (dashBtn) dashBtn.style.display = 'flex';
 
     if (tabName === 'search-section') {
-        // Search tab already has its own filter/sort form, only show Dashboard & Export PDF
         if (sortWrap) sortWrap.style.display = 'none';
         if (exportBtn) exportBtn.style.display = 'flex';
         if (searchBtn) searchBtn.style.display = 'none';
     } else if (tabName === 'audit-section') {
-        // Audit Trail needs Dashboard, Sort, and Export PDF
         if (sortWrap) sortWrap.style.display = 'flex';
         if (exportBtn) exportBtn.style.display = 'flex';
         if (searchBtn) searchBtn.style.display = 'none';
     } else {
-        // Expense Ledger, Cash Statement, Bank Statement: Show all controls
         if (sortWrap) sortWrap.style.display = 'flex';
         if (exportBtn) exportBtn.style.display = 'flex';
         if (searchBtn) searchBtn.style.display = 'flex';
@@ -361,7 +327,6 @@ async function loadData() {
 
             if (document.getElementById('opening-cash')) document.getElementById('opening-cash').value = settings.openingCash || 0;
             if (document.getElementById('opening-bank')) document.getElementById('opening-bank').value = settings.openingBank || 0;
-            // Sync saved profile details from MongoDB so Phone/Name never show N/A
             if (settings.profileUsername || settings.profileFullname || settings.profilePhone) {
                 const dbUser = settings.profileUsername || document.getElementById('profile-username').innerText;
                 const dbName = settings.profileFullname || document.getElementById('profile-fullname').innerText;
@@ -373,7 +338,6 @@ async function loadData() {
                     localStorage.setItem(`thunder_profile_${auth.currentUser.uid}`, `${dbUser} | ${dbName} | ${dbPhone}`);
                 }
             }
-            
         } catch(e) { console.warn("Settings UI Error:", e); }
         
         if (settings.deletionTimerStart) {
@@ -404,10 +368,8 @@ async function loadData() {
             statusEl.style.color = '#10b981';
             statusEl.style.background = 'rgba(16, 185, 129, 0.1)';
         }
-
     } catch (error) {
         console.error("Critical Vault Network Error:", error);
-        
         if (statusEl) {
             statusEl.innerHTML = '🔴 Offline / Error';
             statusEl.style.color = '#ef4444';
@@ -426,7 +388,6 @@ function calculateBalances(transactions, settings) {
 
     transactions.forEach(t => {
         if (!t || !t.date) return; 
-        
         const amt = Number(t.amount) || 0; 
         const acc = t.account || '';        
 
@@ -454,7 +415,6 @@ function calculateBalances(transactions, settings) {
 function renderDashboard() {
     const catCanvas = document.getElementById('categoryChart');
     const flowCanvas = document.getElementById('cashflowChart');
-    
     if (!catCanvas || !flowCanvas) return; 
 
     const isDark = document.body.getAttribute('data-theme') === 'dark';
@@ -496,11 +456,9 @@ function renderDashboard() {
     for (let i = 5; i >= 0; i--) {
         let d = new Date(today.getFullYear(), today.getMonth() - i, 1);
         let label = d.toLocaleString('default', { month: 'short', year: '2-digit' });
-        
         let year = d.getFullYear();
         let month = (d.getMonth() + 1).toString().padStart(2, '0');
         let key = `${year}-${month}`; 
-        
         flowData[key] = { label: label, in: 0, out: 0 };
     }
 
@@ -555,7 +513,6 @@ function processAndRenderTables() {
 
     let filteredTx = masterTransactions.filter(t => {
         if (!t.date) return false; 
-
         if (activeTab === 'expense-section' && t.type !== 'Expense') return false;
         if (activeTab === 'cash-section' && !(t.account === 'Cash' || t.type === 'Contra' || t.type === 'Payment')) return false;
         if (activeTab === 'bank-section' && !(t.account === 'Bank Account' || t.type === 'Contra' || t.type === 'Payment')) return false;
@@ -598,9 +555,9 @@ function processAndRenderTables() {
     });
 
     currentFilteredData = filteredTx;
-
     let pagedTx = filteredTx;
     const paginatedTabs = ['expense-section', 'cash-section', 'bank-section'];
+    
     if (!paginatedTabs.includes(activeTab) || noPaginationViews.includes(currentView) || (currentView === 'All Month' && subFilter !== '') || (currentView === 'Category' && subFilter !== '')) {
         document.getElementById('pagination-controls').style.display = 'none';
     } else {
@@ -708,10 +665,8 @@ window.exportTabToPDF = function() {
             let amt = Number(t.amount) || 0;
             if (t.type === 'Receipt') searchIn += amt;
             if (t.type === 'Expense' || t.type === 'Payment') searchOut += amt;
-            
             return [t.date, t.particulars, t.type, t.account, `Rs. ${t.amount.toLocaleString('en-IN')}`]
         });
-        
         foot = [['', '', 'SEARCH TOTALS:', `IN: Rs. ${searchIn.toLocaleString('en-IN')}`, `OUT: Rs. ${searchOut.toLocaleString('en-IN')}`]];
     }
     else if (activeTab === 'audit-section') {
@@ -741,12 +696,10 @@ window.exportTabToPDF = function() {
                 if (Number(old.amount || 0) !== Number(newD.amount || 0)) changes.push(`Amt: Rs.${Number(old.amount || 0).toLocaleString('en-IN')} -> Rs.${Number(newD.amount || 0).toLocaleString('en-IN')}`);
                 if ((old.category || '-') !== (newD.category || '-')) changes.push(`Cat: ${old.category || '-'} -> ${newD.category || '-'}`);
                 if (old.account !== newD.account) changes.push(`Acc: ${old.account} -> ${newD.account}`);
-                
                 changeStr = changes.length > 0 ? changes.join(' | ') : 'No specific fields changed.';
             } else if (originalAction === 'DELETED') {
                 changeStr = `DELETED: TYPE: ${old.type} | ${old.date} | ${old.particulars} | Rs.${Number(old.amount || 0).toLocaleString('en-IN')}`;
             }
-            
             return [localTime, actionStr, changeStr];
         });
     }
@@ -848,7 +801,6 @@ window.generateMasterPDF = function() {
         } else {
             changeStr = `DELETED: [${old.type || '-'}] ${old.date || '-'} | ${old.particulars || '-'} | Rs.${Number(old.amount || 0).toLocaleString('en-IN')} (${old.account || '-'})`;
         }
-
         return [localTime, actionStr, changeStr];
     });
 
@@ -1253,10 +1205,6 @@ window.deleteCategory = async function(id) {
     }
 }
 
-// ==========================================
-// FORM SUBMISSION EVENT LISTENERS
-// ==========================================
-
 const safeSubmit = (formId, asyncLogic) => {
     const form = document.getElementById(formId);
     if (form) {
@@ -1643,7 +1591,14 @@ if (formSignup) {
             await updateProfile(userCredential.user, { 
                 displayName: combinedProfile 
             });
-            await sendEmailVerification(userCredential.user);
+
+            // Trigger Professional Email Verification via Backend
+            const idToken = await userCredential.user.getIdToken();
+            await fetch(`${API_URL}/auth/send-verification`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${idToken}`, 'Content-Type': 'application/json' }
+            }).catch(e => console.error("Verification Email Error:", e));
+
             await signOut(auth);
             
             customAlert("Account created! 📩 Please verify your email.", "success");
@@ -1654,7 +1609,11 @@ if (formSignup) {
                 try {
                     const tempCred = await signInWithEmailAndPassword(auth, email, password);
                     if (!tempCred.user.emailVerified) {
-                        await sendEmailVerification(tempCred.user);
+                        const tempToken = await tempCred.user.getIdToken();
+                        await fetch(`${API_URL}/auth/send-verification`, {
+                            method: 'POST',
+                            headers: { 'Authorization': `Bearer ${tempToken}`, 'Content-Type': 'application/json' }
+                        });
                         await signOut(auth);
                         customAlert("🚨 Email exists but is unverified. A NEW link has been sent to your inbox!", "warning");
                         toggleAuth('login');
@@ -1709,7 +1668,11 @@ if (formLogin) {
         try {
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
             if (!userCredential.user.emailVerified) {
-                await sendEmailVerification(userCredential.user);
+                const tempToken = await userCredential.user.getIdToken();
+                await fetch(`${API_URL}/auth/send-verification`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${tempToken}`, 'Content-Type': 'application/json' }
+                });
                 await signOut(auth);
                 customAlert("🚨 Email not verified. A NEW link has been sent.", "warning");
                 btn.innerText = "Access Vault";
@@ -1728,7 +1691,7 @@ if (formLogin) {
     });
 }
 
-// FORGOT PASSWORD HANDLER (Choice 1)
+// FORGOT PASSWORD HANDLER (Professional Template + 3-Min Cooldown)
 const btnForgotPass = document.getElementById('btn-forgot-password');
 if (btnForgotPass) {
     btnForgotPass.addEventListener('click', async (e) => {
@@ -1743,18 +1706,32 @@ if (btnForgotPass) {
             return;
         }
 
+        if (btnForgotPass.dataset.submitting === 'true') return;
+        btnForgotPass.dataset.submitting = 'true';
+
         try {
-            btnForgotPass.innerText = "Sending Reset Link...";
-            await sendPasswordResetEmail(auth, email);
+            btnForgotPass.innerText = "Sending Secure Link...";
+            errorEl.style.display = 'none';
+
+            const res = await fetch(`${API_URL}/auth/forgot-password`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email })
+            });
+            const data = await res.json();
+
+            if (!res.ok) throw new Error(data.error || "Failed to send reset email.");
+
             errorEl.style.color = '#10b981';
-            errorEl.innerText = `✅ Password reset link sent to ${email}! Check your Inbox (and Spam folder) to set a new password.`;
+            errorEl.innerText = `✅ ${data.message || 'Professional reset link sent to your inbox!'}`;
             errorEl.style.display = 'block';
         } catch (err) {
             errorEl.style.color = '#ef4444';
-            errorEl.innerText = "Error: Could not send reset email. Please check the email address.";
+            errorEl.innerText = err.message;
             errorEl.style.display = 'block';
         } finally {
             btnForgotPass.innerText = "Forgot Password?";
+            setTimeout(() => { btnForgotPass.dataset.submitting = 'false'; }, 3000);
         }
     });
 }
