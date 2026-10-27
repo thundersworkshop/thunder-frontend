@@ -1615,7 +1615,7 @@ if (formSignup) {
                             headers: { 'Authorization': `Bearer ${tempToken}`, 'Content-Type': 'application/json' }
                         });
                         await signOut(auth);
-                        customAlert("🚨 Email exists but is unverified. A NEW link has been sent to your inbox!", "warning");
+                        customAlert("🚨 Email exists but is unverified. A NEW link has been sent to your inbox!(Check Spam Folder)", "warning");
                         toggleAuth('login');
                     } else {
                         await signOut(auth);
