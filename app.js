@@ -1956,9 +1956,8 @@ safeSubmit('contact-form', async () => {
     }
 
     const btn = document.getElementById('contact-submit-btn');
-    if (btn.disabled) return;
+    // Removed the buggy 'if (btn.disabled) return;' check that was aborting the script
     btn.innerText = "Sending...";
-    btn.disabled = true;
 
     const nameVal = document.getElementById('contact-name').value.trim();
     
@@ -2001,6 +2000,5 @@ safeSubmit('contact-form', async () => {
         closeContactModal();
     } finally {
         btn.innerText = "Send Message";
-        btn.disabled = false;
     }
 });
