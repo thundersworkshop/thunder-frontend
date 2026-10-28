@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-import { getAuth, setPersistence, browserSessionPersistence, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendEmailVerification, updatePassword, updateProfile, EmailAuthProvider, reauthenticateWithCredential } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
+import { getAuth, setPersistence, browserSessionPersistence, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendEmailVerification, sendPasswordResetEmail, updatePassword, updateProfile, EmailAuthProvider, reauthenticateWithCredential } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyBP8B2KiK_EWxhLrRgeC6uxy1ItYQNbGC4",
@@ -1592,16 +1592,12 @@ if (formSignup) {
                 displayName: combinedProfile 
             });
 
-            // Trigger Professional Email Verification via Backend
-            const idToken = await userCredential.user.getIdToken();
-            await fetch(`${API_URL}/auth/send-verification`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${idToken}`, 'Content-Type': 'application/json' }
-            }).catch(e => console.error("Verification Email Error:", e));
+            // Trigger Native Firebase Email Verification
+            await sendEmailVerification(userCredential.user);
 
             await signOut(auth);
             
-            customAlert("Account created! 📩 Please verify your email.", "success");
+            customAlert("Account created! 📩 Please check your inbox to verify your email.", "success");
             document.getElementById('form-signup').reset();
             toggleAuth('login');
         } catch (error) {
@@ -1609,13 +1605,9 @@ if (formSignup) {
                 try {
                     const tempCred = await signInWithEmailAndPassword(auth, email, password);
                     if (!tempCred.user.emailVerified) {
-                        const tempToken = await tempCred.user.getIdToken();
-                        await fetch(`${API_URL}/auth/send-verification`, {
-                            method: 'POST',
-                            headers: { 'Authorization': `Bearer ${tempToken}`, 'Content-Type': 'application/json' }
-                        });
+                        await sendEmailVerification(tempCred.user);
                         await signOut(auth);
-                        customAlert("🚨 Email exists but is unverified. A NEW link has been sent to your inbox!(Check Spam Folder)", "warning");
+                        customAlert("🚨 Email exists but is unverified. A NEW link has been sent to your inbox!", "warning");
                         toggleAuth('login');
                     } else {
                         await signOut(auth);
@@ -1668,13 +1660,9 @@ if (formLogin) {
         try {
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
             if (!userCredential.user.emailVerified) {
-                const tempToken = await userCredential.user.getIdToken();
-                await fetch(`${API_URL}/auth/send-verification`, {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${tempToken}`, 'Content-Type': 'application/json' }
-                });
+                await sendEmailVerification(userCredential.user);
                 await signOut(auth);
-                customAlert("🚨 Email not verified. A NEW link has been sent.", "warning");
+                customAlert("🚨 Email not verified. A NEW link has been sent to your inbox.", "warning");
                 btn.innerText = "Access Vault";
                 btn.disabled = false;
                 return;
@@ -1713,17 +1701,11 @@ if (btnForgotPass) {
             btnForgotPass.innerText = "Sending Secure Link...";
             errorEl.style.display = 'none';
 
-            const res = await fetch(`${API_URL}/auth/forgot-password`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email })
-            });
-            const data = await res.json();
-
-            if (!res.ok) throw new Error(data.error || "Failed to send reset email.");
+            // Trigger Native Firebase Password Reset
+            await sendPasswordResetEmail(auth, email);
 
             errorEl.style.color = '#10b981';
-            errorEl.innerText = `✅ ${data.message || 'Professional reset link sent to your inbox!'}`;
+            errorEl.innerText = "✅ Password reset link sent to your inbox!";
             errorEl.style.display = 'block';
         } catch (err) {
             errorEl.style.color = '#ef4444';
