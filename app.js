@@ -514,8 +514,8 @@ function processAndRenderTables() {
     let filteredTx = masterTransactions.filter(t => {
         if (!t.date) return false; 
         if (activeTab === 'expense-section' && t.type !== 'Expense') return false;
-        if (activeTab === 'cash-section' && !(t.account === 'Cash' || t.type === 'Contra' || t.type === 'Payment')) return false;
-        if (activeTab === 'bank-section' && !(t.account === 'Bank Account' || t.type === 'Contra' || t.type === 'Payment')) return false;
+        if (activeTab === 'cash-section' && !(t.account === 'Cash' || t.type === 'Contra')) return false;
+if (activeTab === 'bank-section' && !(t.account === 'Bank Account' || t.type === 'Contra')) return false;
 
         const tDate = new Date(t.date);
         if (currentView === 'This Month' || currentView === 'Category Month') {
@@ -705,17 +705,33 @@ window.exportTabToPDF = function() {
     }
 
     doc.autoTable({
-        startY: 42,
-        head: head,
-        body: body,
-        foot: foot,
-        theme: 'grid',
-        styles: { font: 'helvetica', fontSize: 10 },
-        headStyles: { fillColor: [102, 126, 234] },
-        footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' }
-    });
+		startY: 42,
+		head: head,
+		body: body,
+		foot: foot,
+		theme: 'grid',
+		styles: { font: 'helvetica', fontSize: 10 },
+		headStyles: { fillColor: [102, 126, 234] },
+		footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' }
+	});
 
-    doc.save(`Thunder_${tabTitle.replace(/\s+/g, '_')}_${new Date().getTime()}.pdf`);
+	const fileName = `Thunder_${tabTitle.replace(/\s+/g, '_')}_${new Date().getTime()}.pdf`;
+	if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+		try {
+			const pdfBase64 = doc.output('datauristring').split(',')[1];
+			window.Capacitor.Plugins.Filesystem.writeFile({
+				path: fileName,
+				data: pdfBase64,
+				directory: 'DOCUMENTS'
+			}).then(() => {
+				customAlert("PDF saved to your phone's Documents folder!", "success");
+			}).catch(e => {
+				customAlert("Please run: npm install @capacitor/filesystem", "error");
+			});
+		} catch(e) { doc.save(fileName); }
+	} else {
+		doc.save(fileName);
+	}
 }
 
 window.generateMasterPDF = function() {
@@ -732,8 +748,8 @@ window.generateMasterPDF = function() {
     exportData.sort((a, b) => new Date(a.date) - new Date(b.date));
 
     const expenseList = exportData.filter(t => t.type === 'Expense');
-    const cashList = exportData.filter(t => t.account === 'Cash' || t.type === 'Contra' || t.type === 'Payment');
-    const bankList = exportData.filter(t => t.account === 'Bank Account' || t.type === 'Contra' || t.type === 'Payment');
+    const cashList = exportData.filter(t => t.account === 'Cash' || t.type === 'Contra');
+    const bankList = exportData.filter(t => t.account === 'Bank Account' || t.type === 'Contra');
 
     const auditList = masterAuditLogs.filter(log => {
         const origDate = log.originalData?.date || '';
@@ -880,16 +896,32 @@ window.generateMasterPDF = function() {
 
     startY = addSectionTitle(`4. AUDIT TRAIL & SECURITY LOG (${start} to ${end})`, [99, 102, 241]);
     doc.autoTable({
-        startY: startY,
-        head: [['Timestamp', 'Status / Action', 'Detailed Modification / Deletion Record']],
-        body: auditBody.length ? auditBody : [['-', 'CLEAN', 'No modifications or deletions recorded in this timeframe.']],
-        theme: 'grid',
-        styles: { font: 'helvetica', fontSize: 8.5 },
-        headStyles: { fillColor: [99, 102, 241] }
-    });
+		startY: startY,
+		head: [['Timestamp', 'Status / Action', 'Detailed Modification / Deletion Record']],
+		body: auditBody.length ? auditBody : [['-', 'CLEAN', 'No modifications or deletions recorded in this timeframe.']],
+		theme: 'grid',
+		styles: { font: 'helvetica', fontSize: 8.5 },
+		headStyles: { fillColor: [99, 102, 241] }
+	});
 
-    doc.save(`Thunder_Master_Report_${start}_to_${end}.pdf`);
-    customAlert("Complete Master Report with Ledgers & Audit Trail exported!", "success");
+	const fileName = `Thunder_Master_Report_${start}_to_${end}.pdf`;
+	if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+		try {
+			const pdfBase64 = doc.output('datauristring').split(',')[1];
+			window.Capacitor.Plugins.Filesystem.writeFile({
+				path: fileName,
+				data: pdfBase64,
+				directory: 'DOCUMENTS'
+			}).then(() => {
+				customAlert("Master Report saved to your phone's Documents folder!", "success");
+			}).catch(e => {
+				customAlert("Please run: npm install @capacitor/filesystem", "error");
+			});
+		} catch(e) { doc.save(fileName); customAlert("Exported!", "success"); }
+	} else {
+		doc.save(fileName);
+		customAlert("Complete Master Report with Ledgers & Audit Trail exported!", "success");
+	}
 };
 
 window.cloneEntry = function(id) {
@@ -940,7 +972,7 @@ function renderTables(transactions, auditLogs, activeTab) {
             document.getElementById('expense-table-body').innerHTML += `<tr><td data-label="Date">${t.date}</td><td data-label="Particulars">${t.particulars}</td><td data-label="Category">${t.category || '-'}</td><td data-label="Account">${t.account}</td><td data-label="Amount" style="font-weight: bold;">₹${t.amount}</td><td data-label="Note">${displayNote}</td><td data-label="Action">${actionCell}</td></tr>`;
         }
         
-        if (activeTab === 'cash-section' && (t.account === 'Cash' || t.type === 'Contra' || t.type === 'Payment')) {
+        if (activeTab === 'cash-section' && (t.account === 'Cash' || t.type === 'Contra')) {
             let isCashIncrease = false;
             if (t.type === 'Receipt' && t.account === 'Cash') isCashIncrease = true;
             if (t.type === 'Contra' && t.account === 'Bank Account') isCashIncrease = true; 
@@ -954,7 +986,7 @@ function renderTables(transactions, auditLogs, activeTab) {
             document.getElementById('cash-table-body').innerHTML += `<tr><td data-label="Date">${t.date}</td><td data-label="Particulars">${t.particulars}</td><td data-label="Type">${t.type}</td><td data-label="Amount" style="${amtStyle} font-weight: bold;">₹${t.amount} ${inOutBadge}</td><td data-label="Note">${displayNote}</td><td data-label="Action">${actionCell}</td></tr>`;
         }
         
-        if (activeTab === 'bank-section' && (t.account === 'Bank Account' || t.type === 'Contra' || t.type === 'Payment')) {
+        if (activeTab === 'bank-section' && (t.account === 'Bank Account' || t.type === 'Contra')) {
             let isBankIncrease = false;
             if (t.type === 'Receipt' && t.account === 'Bank Account') isBankIncrease = true;
             if (t.type === 'Contra' && t.account === 'Cash') isBankIncrease = true; 
