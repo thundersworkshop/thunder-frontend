@@ -172,7 +172,7 @@ window.updateCommandBar = function(tabName) {
     const searchBtn = document.getElementById('cmd-search-btn');
     if (!bar) return;
 
-    if (['dashboard-section', 'entry-section', 'profile-section', 'settings-section'].includes(tabName)) {
+    if (tabName === 'dashboard-section') {
         bar.style.display = 'none';
         return;
     }
@@ -180,7 +180,11 @@ window.updateCommandBar = function(tabName) {
     bar.style.display = 'flex';
     if (dashBtn) dashBtn.style.display = 'flex';
 
-    if (tabName === 'search-section') {
+    if (['entry-section', 'profile-section', 'settings-section'].includes(tabName)) {
+        if (sortWrap) sortWrap.style.display = 'none';
+        if (exportBtn) exportBtn.style.display = 'none';
+        if (searchBtn) searchBtn.style.display = 'none';
+    } else if (tabName === 'search-section') {
         if (sortWrap) sortWrap.style.display = 'none';
         if (exportBtn) exportBtn.style.display = 'flex';
         if (searchBtn) searchBtn.style.display = 'none';
@@ -1430,7 +1434,7 @@ window.restoreEntry = async function(logId) {
                 method: 'PUT',
                 headers: getAuthHeaders(true),
                 body: JSON.stringify({ 
-                    editorPassword: editorPassword, 
+                    isRestore: true, 
                     updatedData: {
                         date: old.date, type: old.type, particulars: old.particulars,
                         amount: Number(old.amount), category: old.category,
